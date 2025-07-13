@@ -2,13 +2,13 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BETH, Verifier} from "../src/BETH.sol";
+import {BETH} from "../src/BETH.sol";
 
 contract BETHTest is Test {
     BETH public beth;
 
     function setUp() public {
-        beth = new BETH(Verifier(address(0)), Verifier(address(0)));
+        beth = new BETH();
     }
 
     function test_proof_of_burn_public_commitment() public pure {
