@@ -5,18 +5,17 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract WORM is ERC20 {
     uint256 constant BLOCK_PER_EPOCH = 10;
-    uint256 constant MAX_REWARD = 50 ether;
-    uint256 constant REWARD_DECREASE_RATE = 10000000000;
+    uint256 constant REWARD_PER_EPOCH = 50 ether;
 
-    IERC20 public beth_contract;
-    uint256 public starting_block;
+    IERC20 public bethContract;
+    uint256 public startingTimestamp;
 
-    mapping(uint256 => uint256) public epoch_totals;
-    mapping(uint256 => mapping(address => uint256)) public epochs;
+    mapping(uint256 => uint256) public epochTotal;
+    mapping(uint256 => mapping(address => uint256)) public epoch_user;
 
-    constructor(IERC20 _beth_contract) ERC20("WORM", "WORM") {
-        beth_contract = _beth_contract;
-        starting_block = block.number;
+    constructor(IERC20 _bethContract) ERC20("WORM", "WORM") {
+        bethContract = _bethContract;
+        startingTimestamp = block.timestamp;
     }
 
     /**
@@ -27,7 +26,7 @@ contract WORM is ERC20 {
      * @return The current epoch number.
      */
     function currentEpoch() public view returns (uint256) {
-        return (block.number - starting_block) / BLOCK_PER_EPOCH;
+        return (block.timestamp - startingTimestamp) / 120 seconds;
     }
 
     /**
@@ -44,27 +43,11 @@ contract WORM is ERC20 {
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _num_epochs; i++) {
             uint256 epochIndex = currEpoch + i;
-            uint256 user = epochs[epochIndex][msg.sender] + _amount_per_epoch;
-            uint256 total = epoch_totals[epochIndex] + _amount_per_epoch;
-            mint_amount += (rewardOf(epochIndex) * user) / total;
+            uint256 user = epoch_user[epochIndex][msg.sender] + _amount_per_epoch;
+            uint256 total = epochTotal[epochIndex] + _amount_per_epoch;
+            mint_amount += REWARD_PER_EPOCH * user / total;
         }
         return mint_amount;
-    }
-
-    /**
-     * @notice Calculates the reward for a given epoch.
-     *
-     * @dev The reward decreases by a fixed rate every epoch.
-     *
-     * @param _epoch The epoch number for which to calculate the reward.
-     * @return The reward for the given epoch.
-     */
-    function rewardOf(uint256 _epoch) public pure returns (uint256) {
-        uint256 reward = MAX_REWARD;
-        for (uint256 i = 0; i < _epoch; i++) {
-            reward = reward - reward / REWARD_DECREASE_RATE;
-        }
-        return reward;
     }
 
     /**
@@ -79,10 +62,10 @@ contract WORM is ERC20 {
         require(_num_epochs != 0, "Invalid epoch number.");
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _num_epochs; i++) {
-            epoch_totals[currEpoch + i] += _amount_per_epoch;
-            epochs[currEpoch + i][msg.sender] += _amount_per_epoch;
+            epochTotal[currEpoch + i] += _amount_per_epoch;
+            epoch_user[currEpoch + i][msg.sender] += _amount_per_epoch;
         }
-        require(beth_contract.transferFrom(msg.sender, address(this), _num_epochs * _amount_per_epoch), "TF");
+        require(bethContract.transferFrom(msg.sender, address(this), _num_epochs * _amount_per_epoch), "TF");
     }
 
     /**
@@ -102,10 +85,10 @@ contract WORM is ERC20 {
         require(_starting_epoch + _num_epochs <= currentEpoch(), "Cannot claim an ongoing epoch!");
         uint256 mint_amount = 0;
         for (uint256 i = 0; i < _num_epochs; i++) {
-            uint256 total = epoch_totals[_starting_epoch + i];
+            uint256 total = epochTotal[_starting_epoch + i];
             if (total > 0) {
-                uint256 user = epochs[_starting_epoch + i][_user];
-                mint_amount += (rewardOf(_starting_epoch + i) * user) / total;
+                uint256 user = epoch_user[_starting_epoch + i][_user];
+                mint_amount += REWARD_PER_EPOCH * user / total;
             }
         }
         return mint_amount;
