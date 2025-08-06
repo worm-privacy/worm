@@ -49,13 +49,17 @@ contract BETH is ERC20 {
         uint256[2] calldata _pC,
         uint256 _coin,
         uint256 _amount,
-        uint256 _remainingCoin
+        uint256 _remainingCoin,
+        uint256 _fee,
+        address _receiver
+
     ) public {
         require(coins[_coin]);
         require(!coins[_remainingCoin]);
         uint256 commitment = uint256(keccak256(abi.encodePacked(_coin, _amount, _remainingCoin))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-        _mint(msg.sender, _amount);
+        _mint(msg.sender, fee);
+        _mint(_receiver, amount);
         coins[_coin] = false;
         coins[_remainingCoin] = true;
     }
