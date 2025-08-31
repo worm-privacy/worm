@@ -12,3 +12,7 @@ docs/
 
 # Dotenv file
 .env
+
+spend_input.json
+witness.wtns
+input.json
