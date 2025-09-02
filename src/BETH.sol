@@ -27,7 +27,7 @@ contract BETH is ERC20 {
         uint256 _spend,
         address _receiver
     ) public {
-        require(_fee + _spend <= 1 ether); // Mint cap
+        require(_fee + _spend <= 10 ether, "Mint is capped!"); // Mint cap
         require(!nullifiers[_nullifier]);
         require(!coins[_remainingCoin]);
         bytes32 blockRoot = blockhash(_blockNumber);
