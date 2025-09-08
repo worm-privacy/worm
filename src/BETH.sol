@@ -6,6 +6,8 @@ import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
 
 contract BETH is ERC20 {
+    uint256 public constant MINT_CAP = 1 ether;
+
     ProofOfBurnVerifier proofOfBurnVerifier;
     SpendVerifier spendVerifier;
     mapping(uint256 => bool) nullifiers;
@@ -28,7 +30,7 @@ contract BETH is ERC20 {
         uint256 _spend,
         address _receiver
     ) public {
-        require(_fee + _spend <= 1 ether); // Mint cap
+        require(_fee + _spend <= MINT_CAP); // Mint cap
         require(!nullifiers[_nullifier]);
         require(coins[_remainingCoin] == 0);
         bytes32 blockRoot = blockhash(_blockNumber);
@@ -66,5 +68,6 @@ contract BETH is ERC20 {
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
         revealed[rootCoin] += _amount + _fee;
+        require(revealed[rootCoin] < MINT_CAP);
     }
 }
