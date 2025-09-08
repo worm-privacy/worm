@@ -6,7 +6,7 @@ import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
 
 contract BETH is ERC20 {
-    uint256 public constant MINT_CAP = 1 ether;
+    uint256 public constant MINT_CAP = 10 ether;
 
     ProofOfBurnVerifier proofOfBurnVerifier;
     SpendVerifier spendVerifier;
