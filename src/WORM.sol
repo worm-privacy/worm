@@ -38,16 +38,12 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs the user plans to participate in.
      * @return The approximate amount of tokens that can be minted.
      */
-    function approximate(
-        uint256 _amountPerEpoch,
-        uint256 _numEpochs
-    ) public view returns (uint256) {
+    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public view returns (uint256) {
         uint256 mint_amount = 0;
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
             uint256 epochIndex = currEpoch + i;
-            uint256 user = epochUser[epochIndex][msg.sender] +
-                _amountPerEpoch;
+            uint256 user = epochUser[epochIndex][msg.sender] + _amountPerEpoch;
             uint256 total = epochTotal[epochIndex] + _amountPerEpoch;
             mint_amount += (REWARD_PER_EPOCH * user) / total;
         }
@@ -62,24 +58,14 @@ contract WORM is ERC20 {
      * @param _amountPerEpoch The amount of tokens to lock per epoch.
      * @param _numEpochs The number of epochs to participate in.
      */
-    function participate(
-        uint256 _amountPerEpoch,
-        uint256 _numEpochs
-    ) external {
+    function participate(uint256 _amountPerEpoch, uint256 _numEpochs) external {
         require(_numEpochs != 0, "Invalid epoch number.");
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochTotal[currEpoch + i] += _amountPerEpoch;
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
         }
-        require(
-            bethContract.transferFrom(
-                msg.sender,
-                address(this),
-                _numEpochs * _amountPerEpoch
-            ),
-            "TF"
-        );
+        require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
     }
 
     /**
@@ -91,15 +77,12 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs to claim rewards for.
      * @param _user The user address.
      */
-    function calculateMintAmount(
-        uint256 _startingEpoch,
-        uint256 _numEpochs,
-        address _user
-    ) public view returns (uint256) {
-        require(
-            _startingEpoch + _numEpochs <= currentEpoch(),
-            "Cannot claim an ongoing epoch!"
-        );
+    function calculateMintAmount(uint256 _startingEpoch, uint256 _numEpochs, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        require(_startingEpoch + _numEpochs <= currentEpoch(), "Cannot claim an ongoing epoch!");
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _numEpochs; i++) {
             uint256 total = epochTotal[_startingEpoch + i];
@@ -119,15 +102,8 @@ contract WORM is ERC20 {
      * @param _startingEpoch The starting epoch number from which to claim rewards.
      * @param _numEpochs The number of epochs to claim rewards for.
      */
-    function claim(
-        uint256 _startingEpoch,
-        uint256 _numEpochs
-    ) external returns (uint256) {
-        uint256 mintAmount = calculateMintAmount(
-            _startingEpoch,
-            _numEpochs,
-            msg.sender
-        );
+    function claim(uint256 _startingEpoch, uint256 _numEpochs) external returns (uint256) {
+        uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
         _mint(msg.sender, mintAmount);
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochUser[_startingEpoch + i][msg.sender] = 0;
