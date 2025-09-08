@@ -9,7 +9,8 @@ contract BETH is ERC20 {
     ProofOfBurnVerifier proofOfBurnVerifier;
     SpendVerifier spendVerifier;
     mapping(uint256 => bool) nullifiers;
-    mapping(uint256 => bool) coins;
+    mapping(uint256 => uint256) coins; // Map each coin to its root coin
+    mapping(uint256 => uint256) revealed; // Total revealed amount of a root coin
 
     constructor() ERC20("Burnt ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
@@ -29,7 +30,7 @@ contract BETH is ERC20 {
     ) public {
         require(_fee + _spend <= 1 ether); // Mint cap
         require(!nullifiers[_nullifier]);
-        require(!coins[_remainingCoin]);
+        require(coins[_remainingCoin] == 0);
         bytes32 blockRoot = blockhash(_blockNumber);
         uint256 commitment = uint256(
             keccak256(
@@ -40,7 +41,8 @@ contract BETH is ERC20 {
         _mint(msg.sender, _fee);
         _mint(_receiver, _spend);
         nullifiers[_nullifier] = true;
-        coins[_remainingCoin] = true;
+        coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
+        revealed[_remainingCoin] = _fee + _spend;
     }
 
     function spendCoin(
@@ -52,19 +54,17 @@ contract BETH is ERC20 {
         uint256 _remainingCoin,
         uint256 _fee,
         address _receiver
-
     ) public {
-        require(coins[_coin], "Coin does not exist");
-        require(!coins[_remainingCoin]," Remaining coin already exists");
-        uint256 commitment = uint256(
-            keccak256(
-                abi.encodePacked(_coin, _amount, _remainingCoin, _fee ,uint256(uint160(_receiver)))
-                )
-                ) >> 8;
+        uint256 rootCoin = coins[_coin];
+        require(rootCoin != 0, "Coin does not exist");
+        require(coins[_remainingCoin] == 0, "Remaining coin already exists");
+        uint256 commitment =
+            uint256(keccak256(abi.encodePacked(_coin, _amount, _remainingCoin, _fee, uint256(uint160(_receiver))))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _fee);
         _mint(_receiver, _amount);
-        coins[_coin] = false;
-        coins[_remainingCoin] = true;
+        coins[_coin] = 0;
+        coins[_remainingCoin] = rootCoin;
+        revealed[rootCoin] += _amount + _fee;
     }
 }
