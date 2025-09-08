@@ -30,9 +30,9 @@ contract BETH is ERC20 {
         uint256 _spend,
         address _receiver
     ) public {
-        require(_fee + _spend <= MINT_CAP); // Mint cap
-        require(!nullifiers[_nullifier]);
-        require(coins[_remainingCoin] == 0);
+        require(_fee + _spend <= MINT_CAP, "Mint is capped!");
+        require(!nullifiers[_nullifier], "Nullifier already consumed!");
+        require(coins[_remainingCoin] == 0, "Coin already minted!");
         bytes32 blockRoot = blockhash(_blockNumber);
         uint256 commitment = uint256(
             keccak256(
@@ -68,6 +68,6 @@ contract BETH is ERC20 {
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
         revealed[rootCoin] += _amount + _fee;
-        require(revealed[rootCoin] <= MINT_CAP);
+        require(revealed[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
