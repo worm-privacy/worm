@@ -68,6 +68,6 @@ contract BETH is ERC20 {
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
         revealed[rootCoin] += _amount + _fee;
-        require(revealed[rootCoin] < MINT_CAP);
+        require(revealed[rootCoin] <= MINT_CAP);
     }
 }
