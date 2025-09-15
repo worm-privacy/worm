@@ -10,9 +10,9 @@ contract BETH is ERC20 {
 
     ProofOfBurnVerifier proofOfBurnVerifier;
     SpendVerifier spendVerifier;
-    mapping(uint256 => bool) nullifiers;
-    mapping(uint256 => uint256) coins; // Map each coin to its root coin
-    mapping(uint256 => uint256) revealed; // Total revealed amount of a root coin
+    mapping(uint256 => bool) public nullifiers;
+    mapping(uint256 => uint256) public coins; // Map each coin to its root coin
+    mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
 
     constructor() ERC20("Burnt ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
