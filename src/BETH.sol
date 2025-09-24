@@ -32,9 +32,8 @@ contract BETH is ERC20 {
         uint256 _proverFee,
         address _prover
     ) public {
-        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_prover, _proverFee)));
-        require(_revealedAmount >= _proverFee, "Prover fee too high!");
-        require(_broadcasterFee + _revealedAmount <= MINT_CAP, "Mint is capped!");
+        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_prover)));
+        require(_proverFee + _broadcasterFee + _revealedAmount <= MINT_CAP, "Mint is capped!");
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
         bytes32 blockRoot = blockhash(_blockNumber);
@@ -44,6 +43,7 @@ contract BETH is ERC20 {
                     blockRoot,
                     _nullifier,
                     _remainingCoin,
+                    _proverFee,
                     _broadcasterFee,
                     _revealedAmount,
                     uint256(uint160(_revealedAmountReceiver)),
@@ -53,11 +53,11 @@ contract BETH is ERC20 {
         ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
-        _mint(_revealedAmountReceiver, _revealedAmount - _proverFee);
+        _mint(_revealedAmountReceiver, _revealedAmount);
         _mint(_prover, _proverFee);
         nullifiers[_nullifier] = true;
         coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
-        revealed[_remainingCoin] = _broadcasterFee + _revealedAmount;
+        revealed[_remainingCoin] = _proverFee + _broadcasterFee + _revealedAmount;
     }
 
     function spendCoin(
