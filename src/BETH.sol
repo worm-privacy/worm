@@ -8,8 +8,8 @@ import {SpendVerifier} from "./SpendVerifier.sol";
 contract BETH is ERC20 {
     uint256 public constant MINT_CAP = 10 ether;
 
-    ProofOfBurnVerifier proofOfBurnVerifier;
-    SpendVerifier spendVerifier;
+    ProofOfBurnVerifier public proofOfBurnVerifier;
+    SpendVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
     mapping(uint256 => uint256) public coins; // Map each coin to its root coin
     mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
