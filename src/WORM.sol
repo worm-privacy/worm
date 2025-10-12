@@ -6,6 +6,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 contract WORM is ERC20 {
     uint256 constant BLOCK_PER_EPOCH = 10;
     uint256 constant REWARD_PER_EPOCH = 50 ether;
+    uint256 constant EPOCH_DURATION = 1800 seconds;
 
     IERC20 public bethContract;
     uint256 public startingTimestamp;
@@ -26,7 +27,7 @@ contract WORM is ERC20 {
      * @return The current epoch number.
      */
     function currentEpoch() public view returns (uint256) {
-        return (block.timestamp - startingTimestamp) / 1800 seconds;
+        return (block.timestamp - startingTimestamp) / EPOCH_DURATION;
     }
 
     /**
@@ -38,7 +39,10 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs the user plans to participate in.
      * @return The approximate amount of tokens that can be minted.
      */
-    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public view returns (uint256) {
+    function approximate(
+        uint256 _amountPerEpoch,
+        uint256 _numEpochs
+    ) public view returns (uint256) {
         uint256 mint_amount = 0;
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
@@ -65,7 +69,14 @@ contract WORM is ERC20 {
             epochTotal[currEpoch + i] += _amountPerEpoch;
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
         }
-        require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
+        require(
+            bethContract.transferFrom(
+                msg.sender,
+                address(this),
+                _numEpochs * _amountPerEpoch
+            ),
+            "TF"
+        );
     }
 
     /**
@@ -77,12 +88,15 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs to claim rewards for.
      * @param _user The user address.
      */
-    function calculateMintAmount(uint256 _startingEpoch, uint256 _numEpochs, address _user)
-        public
-        view
-        returns (uint256)
-    {
-        require(_startingEpoch + _numEpochs <= currentEpoch(), "Cannot claim an ongoing epoch!");
+    function calculateMintAmount(
+        uint256 _startingEpoch,
+        uint256 _numEpochs,
+        address _user
+    ) public view returns (uint256) {
+        require(
+            _startingEpoch + _numEpochs <= currentEpoch(),
+            "Cannot claim an ongoing epoch!"
+        );
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _numEpochs; i++) {
             uint256 total = epochTotal[_startingEpoch + i];
@@ -102,12 +116,56 @@ contract WORM is ERC20 {
      * @param _startingEpoch The starting epoch number from which to claim rewards.
      * @param _numEpochs The number of epochs to claim rewards for.
      */
-    function claim(uint256 _startingEpoch, uint256 _numEpochs) external returns (uint256) {
-        uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
+    function claim(
+        uint256 _startingEpoch,
+        uint256 _numEpochs
+    ) external returns (uint256) {
+        uint256 mintAmount = calculateMintAmount(
+            _startingEpoch,
+            _numEpochs,
+            msg.sender
+        );
         _mint(msg.sender, mintAmount);
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochUser[_startingEpoch + i][msg.sender] = 0;
         }
         return mintAmount;
+    }
+
+    struct Info {
+        uint256 totalWorm;
+        uint256 totalBeth;
+        uint256 currentEpoch;
+        uint256 epochRemainingTime;
+        uint256[] userContribs;
+        uint256[] totalContribs;
+    }
+
+    function info(
+        address user,
+        uint256 since,
+        uint256 count
+    ) public view returns (Info memory) {
+        uint256 totalBeth = bethContract.totalSupply();
+        uint256 totalWorm = this.totalSupply();
+        uint256 epochRemainingTime = block.timestamp -
+            startingTimestamp -
+            currentEpoch() *
+            EPOCH_DURATION;
+        uint256[] memory userContribs = new uint256[](count);
+        uint256[] memory totalContribs = new uint256[](count);
+        for (uint i = since; i < since + count; i++) {
+            userContribs[i] = epochUser[i][user];
+            totalContribs[i] = epochTotal[i];
+        }
+        return
+            Info({
+                totalWorm: totalWorm,
+                totalBeth: totalBeth,
+                currentEpoch: currentEpoch(),
+                epochRemainingTime: epochRemainingTime,
+                userContribs: userContribs,
+                totalContribs: totalContribs
+            });
     }
 }
