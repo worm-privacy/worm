@@ -37,6 +37,7 @@ contract BETH is ERC20 {
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
         bytes32 blockRoot = blockhash(_blockNumber);
+        require(blockRoot != bytes32(0), "Block root unavailable!");
         uint256 commitment = uint256(
             keccak256(
                 abi.encodePacked(
