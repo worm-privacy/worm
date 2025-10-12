@@ -32,7 +32,7 @@ contract BETH is ERC20 {
         uint256 _proverFee,
         address _prover
     ) public {
-        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_prover)));
+        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_proverFee + _broadcasterFee + _revealedAmount <= MINT_CAP, "Mint is capped!");
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
