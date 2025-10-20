@@ -18,10 +18,11 @@ contract WORM is ERC20 {
     mapping(uint256 => uint256) public epochTotal;
     mapping(uint256 => mapping(address => uint256)) public epochUser;
 
-    constructor(IERC20 _bethContract) ERC20("WORM", "WORM") {
+    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount) ERC20("WORM", "WORM") {
         bethContract = _bethContract;
         startingTimestamp = block.timestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
+        _mint(_premineAddress, _premineAmount);
     }
 
     /**
