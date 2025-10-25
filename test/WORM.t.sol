@@ -34,5 +34,23 @@ contract WORMTest is Test {
         vm.warp(ts + 1800 * 210001);
         assertEq(worm.currentEpoch(), 210001);
         assertEq(worm.currentReward(), 24.999917482626023987 ether);
+        vm.warp(ts + 1800 * (210000 * 2));
+        assertEq(worm.currentEpoch(), 210000 * 2);
+        assertEq(worm.currentReward(), 12.500000000011298343 ether);
+        vm.warp(ts + 1800 * (210000 * 2 + 1));
+        assertEq(worm.currentEpoch(), 210000 * 2 + 1);
+        assertEq(worm.currentReward(), 12.499958741318642055 ether);
+        vm.warp(ts + 1800 * (210000 * 3));
+        assertEq(worm.currentEpoch(), 210000 * 3);
+        assertEq(worm.currentReward(), 6.250000000008426341 ether);
+        vm.warp(ts + 1800 * (210000 * 3 + 1));
+        assertEq(worm.currentEpoch(), 210000 * 3 + 1);
+        assertEq(worm.currentReward(), 6.249979370662098188 ether);
+        vm.warp(ts + 1800 * 10093126);
+        assertEq(worm.currentEpoch(), 10093126);
+        assertEq(worm.currentReward(), 1);
+        vm.warp(ts + 1800 * 10093127);
+        assertEq(worm.currentEpoch(), 10093127);
+        assertEq(worm.currentReward(), 0);
     }
 }
