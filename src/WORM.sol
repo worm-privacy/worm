@@ -8,6 +8,7 @@ contract WORM is ERC20 {
     uint256 constant INITIAL_REWARD_PER_EPOCH = 50 ether;
     uint256 constant REWARD_DECAY_NUMERATOR = 9999966993045875;
     uint256 constant REWARD_DECAY_DENOMINATOR = 10000000000000000;
+    uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
     IERC20 public bethContract;
     uint256 public startingTimestamp;
@@ -145,6 +146,7 @@ contract WORM is ERC20 {
         uint256 totalBeth;
         uint256 currentEpoch;
         uint256 epochRemainingTime;
+        uint256 since;
         uint256[] userContribs;
         uint256[] totalContribs;
     }
@@ -158,19 +160,25 @@ contract WORM is ERC20 {
      * @return An `Info` struct containing global and user-specific information.
      */
     function info(address user, uint256 since, uint256 count) public view returns (Info memory) {
+        if (since == 0 && count == 0) {
+            uint256 epoch = currentEpoch();
+            since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
+            count = 1 + 2 * DEFAULT_INFO_MARGIN;
+        }
         uint256 totalBeth = bethContract.totalSupply();
         uint256 totalWorm = this.totalSupply();
         uint256 epochRemainingTime = block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION;
         uint256[] memory userContribs = new uint256[](count);
         uint256[] memory totalContribs = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
-            userContribs[i] = epochUser[since + i][user];
-            totalContribs[i] = epochTotal[since + i];
+            userContribs[i] = epochUser[i + since][user];
+            totalContribs[i] = epochTotal[i + since];
         }
         return Info({
             totalWorm: totalWorm,
             totalBeth: totalBeth,
             currentEpoch: currentEpoch(),
+            since: since,
             epochRemainingTime: epochRemainingTime,
             userContribs: userContribs,
             totalContribs: totalContribs
