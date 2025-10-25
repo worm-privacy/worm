@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract WORM is ERC20 {
-    uint256 constant EPOCH_DURATION = 1800 seconds;
+    uint256 constant EPOCH_DURATION = 600 seconds;
     uint256 constant INITIAL_REWARD_PER_EPOCH = 50 ether;
     uint256 constant REWARD_DECAY_NUMERATOR = 9999966993045875;
     uint256 constant REWARD_DECAY_DENOMINATOR = 10000000000000000;
@@ -171,7 +171,7 @@ contract WORM is ERC20 {
             totalWorm: totalWorm,
             totalBeth: totalBeth,
             currentEpoch: currentEpoch(),
-            epochRemainingTime: epochRemainingTime,
+            epochRemainingTimegit: epochRemainingTime,
             userContribs: userContribs,
             totalContribs: totalContribs
         });
