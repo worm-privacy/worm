@@ -171,7 +171,7 @@ contract WORM is ERC20 {
             totalWorm: totalWorm,
             totalBeth: totalBeth,
             currentEpoch: currentEpoch(),
-            epochRemainingTimegit: epochRemainingTime,
+            epochRemainingTime: epochRemainingTime,
             userContribs: userContribs,
             totalContribs: totalContribs
         });
