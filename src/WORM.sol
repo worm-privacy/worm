@@ -43,20 +43,35 @@ contract WORM is ERC20 {
     }
 
     /**
-     * @notice Retrieves or computes the total reward for a specific epoch.
+     * @notice Computes and caches rewards up to an epoch.
      * @dev If the reward for the epoch has not been cached, it iteratively calculates it based on the decay rate until the requested epoch.
-     * @param epoch The epoch number for which to get the reward.
-     * @return The reward amount for the specified epoch.
+     * @param epoch The last epoch to calculate reward for.
      */
-    function rewardOf(uint256 epoch) public returns (uint256) {
+    function cacheRewards(uint256 epoch) public {
+        uint256 currRewardEpoch = cachedRewardEpoch;
+        uint256 reward = cachedReward[currRewardEpoch];
+        while (currRewardEpoch < epoch) {
+            reward = (reward * REWARD_DECAY_NUMERATOR) / REWARD_DECAY_DENOMINATOR;
+            currRewardEpoch += 1;
+            cachedReward[currRewardEpoch] = reward;
+        }
+        cachedRewardEpoch = currRewardEpoch;
+    }
+
+    /**
+     * @notice Computes reward of an specific epoch.
+     * @dev It will used the cached reward to speed things up.
+     * @param epoch The epoch to calculate reward for.
+     */
+    function rewardOf(uint256 epoch) public view returns (uint256) {
         if (epoch <= cachedRewardEpoch) {
             return cachedReward[epoch];
         }
-        uint256 reward = cachedReward[cachedRewardEpoch];
-        while (cachedRewardEpoch < epoch) {
+        uint256 currRewardEpoch = cachedRewardEpoch;
+        uint256 reward = cachedReward[currRewardEpoch];
+        while (currRewardEpoch < epoch) {
             reward = (reward * REWARD_DECAY_NUMERATOR) / REWARD_DECAY_DENOMINATOR;
-            cachedRewardEpoch += 1;
-            cachedReward[cachedRewardEpoch] = reward;
+            currRewardEpoch += 1;
         }
         return reward;
     }
@@ -66,7 +81,7 @@ contract WORM is ERC20 {
      * @dev This function calls `rewardOf(currentEpoch())` to get the current epoch’s reward value.
      * @return The current epoch reward amount.
      */
-    function currentReward() public returns (uint256) {
+    function currentReward() public view returns (uint256) {
         return rewardOf(currentEpoch());
     }
 
@@ -77,7 +92,7 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs the user plans to participate in.
      * @return The approximate amount of tokens that can be minted.
      */
-    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public returns (uint256) {
+    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public view returns (uint256) {
         uint256 mintAmount = 0;
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
@@ -113,7 +128,11 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs to claim rewards for.
      * @param _user The user address.
      */
-    function calculateMintAmount(uint256 _startingEpoch, uint256 _numEpochs, address _user) public returns (uint256) {
+    function calculateMintAmount(uint256 _startingEpoch, uint256 _numEpochs, address _user)
+        public
+        view
+        returns (uint256)
+    {
         require(_startingEpoch + _numEpochs <= currentEpoch(), "Cannot claim an ongoing epoch!");
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _numEpochs; i++) {
@@ -133,6 +152,7 @@ contract WORM is ERC20 {
      * @param _numEpochs The number of epochs to claim rewards for.
      */
     function claim(uint256 _startingEpoch, uint256 _numEpochs) external returns (uint256) {
+        cacheRewards(_startingEpoch + _numEpochs);
         uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
         _mint(msg.sender, mintAmount);
         for (uint256 i = 0; i < _numEpochs; i++) {
