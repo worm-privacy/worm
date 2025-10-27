@@ -38,20 +38,21 @@ contract BETH is ERC20 {
         require(coins[_remainingCoin] == 0, "Coin already minted!");
         bytes32 blockRoot = blockhash(_blockNumber);
         require(blockRoot != bytes32(0), "Block root unavailable!");
-        uint256 commitment = uint256(
-            keccak256(
-                abi.encodePacked(
-                    blockRoot,
-                    _nullifier,
-                    _remainingCoin,
-                    _proverFee,
-                    _broadcasterFee,
-                    _revealedAmount,
-                    uint256(uint160(_revealedAmountReceiver)),
-                    extraCommitment
-                )
-            )
-        ) >> 8;
+        uint256 commitment =
+            uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            blockRoot,
+                            _nullifier,
+                            _remainingCoin,
+                            _proverFee,
+                            _broadcasterFee,
+                            _revealedAmount,
+                            uint256(uint160(_revealedAmountReceiver)),
+                            extraCommitment
+                        )
+                    )
+                ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
         _mint(_revealedAmountReceiver, _revealedAmount);
