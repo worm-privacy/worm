@@ -10,7 +10,7 @@ contract WORMTest is Test {
 
     function test_reward() public {
         WORM worm = new WORM(IERC20(address(0)), address(this), 0);
-        worm.cacheRewards(10);
+        worm.cacheRewards(10093127);
         uint256 ts = block.timestamp;
         assertEq(worm.currentEpoch(), 0);
         assertEq(worm.currentReward(), 50 ether);

@@ -4,6 +4,9 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract WORM is ERC20 {
+    event Participated(address participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
+    event Claimed(address claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
+
     uint256 constant EPOCH_DURATION = 600 seconds;
     uint256 constant INITIAL_REWARD_PER_EPOCH = 50 ether;
     uint256 constant REWARD_DECAY_NUMERATOR = 9999966993045875;
@@ -88,7 +91,7 @@ contract WORM is ERC20 {
     /**
      * @notice Estimates the amount of tokens that can be minted for a given participation over multiple epochs.
      * @dev This function calculates the approximate mint amount based on the user's participation and the total participation in each epoch.
-     * @param _amountPerEpoch The amount the user plans to participate per epoch.
+     * @param _amountPerEpoch The amount the user plans to participateco per epoch.
      * @param _numEpochs The number of epochs the user plans to participate in.
      * @return The approximate amount of tokens that can be minted.
      */
@@ -119,6 +122,7 @@ contract WORM is ERC20 {
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
         }
         require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
+        emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
     }
 
     /**
@@ -158,6 +162,7 @@ contract WORM is ERC20 {
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochUser[_startingEpoch + i][msg.sender] = 0;
         }
+        emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
         return mintAmount;
     }
 
