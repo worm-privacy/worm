@@ -46,22 +46,6 @@ contract WORM is ERC20 {
     }
 
     /**
-     * @notice Computes and caches rewards up to an epoch.
-     * @dev If the reward for the epoch has not been cached, it iteratively calculates it based on the decay rate until the requested epoch.
-     * @param epoch The last epoch to calculate reward for.
-     */
-    function cacheRewards(uint256 epoch) public {
-        uint256 currRewardEpoch = cachedRewardEpoch;
-        uint256 reward = cachedReward[currRewardEpoch];
-        while (currRewardEpoch < epoch) {
-            reward = (reward * REWARD_DECAY_NUMERATOR) / REWARD_DECAY_DENOMINATOR;
-            currRewardEpoch += 1;
-            cachedReward[currRewardEpoch] = reward;
-        }
-        cachedRewardEpoch = currRewardEpoch;
-    }
-
-    /**
      * @notice Computes reward of an specific epoch.
      * @dev It will used the cached reward to speed things up.
      * @param epoch The epoch to calculate reward for.
@@ -89,43 +73,6 @@ contract WORM is ERC20 {
     }
 
     /**
-     * @notice Estimates the amount of tokens that can be minted for a given participation over multiple epochs.
-     * @dev This function calculates the approximate mint amount based on the user's participation and the total participation in each epoch.
-     * @param _amountPerEpoch The amount the user plans to participateco per epoch.
-     * @param _numEpochs The number of epochs the user plans to participate in.
-     * @return The approximate amount of tokens that can be minted.
-     */
-    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public view returns (uint256) {
-        uint256 mintAmount = 0;
-        uint256 currEpoch = currentEpoch();
-        for (uint256 i = 0; i < _numEpochs; i++) {
-            uint256 epochIndex = currEpoch + i;
-            uint256 reward = rewardOf(epochIndex);
-            uint256 user = epochUser[epochIndex][msg.sender] + _amountPerEpoch;
-            uint256 total = epochTotal[epochIndex] + _amountPerEpoch;
-            mintAmount += (reward * user) / total;
-        }
-        return mintAmount;
-    }
-
-    /**
-     * @notice Allows a user to participate in the reward program by locking tokens for multiple epochs.
-     * @dev This function updates the user's participation in the specified number of epochs and transfers the required amount of beth tokens to the contract.
-     * @param _amountPerEpoch The amount of tokens to lock per epoch.
-     * @param _numEpochs The number of epochs to participate in.
-     */
-    function participate(uint256 _amountPerEpoch, uint256 _numEpochs) external {
-        require(_numEpochs != 0, "Invalid epoch number.");
-        uint256 currEpoch = currentEpoch();
-        for (uint256 i = 0; i < _numEpochs; i++) {
-            epochTotal[currEpoch + i] += _amountPerEpoch;
-            epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
-        }
-        require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
-        emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
-    }
-
-    /**
      * @notice Allows a user to get the claim amount of their rewards for participation in past epochs.
      * @dev This function calculates and mints the reward based on the user's participation and the total participation in each epoch.
      * @param _startingEpoch The starting epoch number from which to claim rewards.
@@ -150,19 +97,22 @@ contract WORM is ERC20 {
     }
 
     /**
-     * @notice Allows a user to claim their rewards for participation in past epochs.
-     * @dev This function calculates and mints the reward based on the user's participation and the total participation in each epoch.
-     * @param _startingEpoch The starting epoch number from which to claim rewards.
-     * @param _numEpochs The number of epochs to claim rewards for.
+     * @notice Estimates the amount of tokens that can be minted for a given participation over multiple epochs.
+     * @dev This function calculates the approximate mint amount based on the user's participation and the total participation in each epoch.
+     * @param _amountPerEpoch The amount the user plans to participateco per epoch.
+     * @param _numEpochs The number of epochs the user plans to participate in.
+     * @return The approximate amount of tokens that can be minted.
      */
-    function claim(uint256 _startingEpoch, uint256 _numEpochs) external returns (uint256) {
-        cacheRewards(_startingEpoch + _numEpochs);
-        uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
-        _mint(msg.sender, mintAmount);
+    function approximate(uint256 _amountPerEpoch, uint256 _numEpochs) public view returns (uint256) {
+        uint256 mintAmount = 0;
+        uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
-            epochUser[_startingEpoch + i][msg.sender] = 0;
+            uint256 epochIndex = currEpoch + i;
+            uint256 reward = rewardOf(epochIndex);
+            uint256 user = epochUser[epochIndex][msg.sender] + _amountPerEpoch;
+            uint256 total = epochTotal[epochIndex] + _amountPerEpoch;
+            mintAmount += (reward * user) / total;
         }
-        emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
         return mintAmount;
     }
 
@@ -208,5 +158,60 @@ contract WORM is ERC20 {
             userContribs: userContribs,
             totalContribs: totalContribs
         });
+    }
+
+    /*
+     * ========================
+     * END OF VIEW FUNCTION!
+     * =======================
+     */
+
+    /**
+     * @notice Computes and caches rewards up to an epoch.
+     * @dev If the reward for the epoch has not been cached, it iteratively calculates it based on the decay rate until the requested epoch.
+     * @param epoch The last epoch to calculate reward for.
+     */
+    function cacheRewards(uint256 epoch) public {
+        uint256 currRewardEpoch = cachedRewardEpoch;
+        uint256 reward = cachedReward[currRewardEpoch];
+        while (currRewardEpoch < epoch) {
+            reward = (reward * REWARD_DECAY_NUMERATOR) / REWARD_DECAY_DENOMINATOR;
+            currRewardEpoch += 1;
+            cachedReward[currRewardEpoch] = reward;
+        }
+        cachedRewardEpoch = currRewardEpoch;
+    }
+
+    /**
+     * @notice Allows a user to participate in the reward program by locking tokens for multiple epochs.
+     * @dev This function updates the user's participation in the specified number of epochs and transfers the required amount of beth tokens to the contract.
+     * @param _amountPerEpoch The amount of tokens to lock per epoch.
+     * @param _numEpochs The number of epochs to participate in.
+     */
+    function participate(uint256 _amountPerEpoch, uint256 _numEpochs) external {
+        require(_numEpochs != 0, "Invalid epoch number.");
+        uint256 currEpoch = currentEpoch();
+        for (uint256 i = 0; i < _numEpochs; i++) {
+            epochTotal[currEpoch + i] += _amountPerEpoch;
+            epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
+        }
+        require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
+        emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
+    }
+
+    /**
+     * @notice Allows a user to claim their rewards for participation in past epochs.
+     * @dev This function calculates and mints the reward based on the user's participation and the total participation in each epoch.
+     * @param _startingEpoch The starting epoch number from which to claim rewards.
+     * @param _numEpochs The number of epochs to claim rewards for.
+     */
+    function claim(uint256 _startingEpoch, uint256 _numEpochs) external {
+        cacheRewards(_startingEpoch + _numEpochs);
+        uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
+        _mint(msg.sender, mintAmount);
+        for (uint256 i = 0; i < _numEpochs; i++) {
+            epochUser[_startingEpoch + i][msg.sender] = 0;
+        }
+        emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
     }
 }
