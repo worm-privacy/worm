@@ -14,7 +14,7 @@ contract BETH is ERC20 {
     mapping(uint256 => uint256) public coins; // Map each coin to its root coin
     mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
 
-    constructor() ERC20("Burnt ETH", "BETH") {
+    constructor() ERC20("Burned ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
         spendVerifier = new SpendVerifier();
     }
@@ -69,9 +69,13 @@ contract BETH is ERC20 {
                     )
                 ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-        _mint(msg.sender, _broadcasterFee);
+        if (_broadcasterFee != 0) {
+            _mint(msg.sender, _broadcasterFee);
+        }
+        if (_proverFee != 0) {
+            _mint(_prover, _proverFee);
+        }
         _mint(_revealedAmountReceiver, _revealedAmount);
-        _mint(_prover, _proverFee);
         nullifiers[_nullifier] = true;
         coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
         revealed[_remainingCoin] = _proverFee + _broadcasterFee + _revealedAmount;
@@ -85,7 +89,7 @@ contract BETH is ERC20 {
      * @param _coin The encrypted coin being spent.
      * @param _amount The amount being revealed/minted to the receiver.
      * @param _remainingCoin The new encrypted coin for the remaining balance.
-     * @param _fee Fee paid to the transaction sender.
+     * @param _broadcasterFee Fee paid to the transaction sender.
      * @param _receiver The address receiving the revealed amount.
      */
     function spendCoin(
@@ -95,20 +99,20 @@ contract BETH is ERC20 {
         uint256 _coin,
         uint256 _amount,
         uint256 _remainingCoin,
-        uint256 _fee,
+        uint256 _broadcasterFee,
         address _receiver
     ) public {
         uint256 rootCoin = coins[_coin];
         require(rootCoin != 0, "Coin does not exist");
         require(coins[_remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
-            uint256(keccak256(abi.encodePacked(_coin, _amount, _remainingCoin, _fee, uint256(uint160(_receiver))))) >> 8;
+            uint256(keccak256(abi.encodePacked(_coin, _amount, _remainingCoin, _broadcasterFee, uint256(uint160(_receiver))))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-        _mint(msg.sender, _fee);
+        _mint(msg.sender, _broadcasterFee);
         _mint(_receiver, _amount);
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
-        revealed[rootCoin] += _amount + _fee;
+        revealed[rootCoin] += _amount + _broadcasterFee;
         require(revealed[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
