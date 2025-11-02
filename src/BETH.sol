@@ -47,24 +47,23 @@ contract BETH is ERC20 {
         uint256 _proverFee,
         address _prover
     ) public {
-        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
+        uint256 burnExtraCommitment =
+            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver))) >> 8;
+        uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_proverFee + _broadcasterFee + _revealedAmount <= MINT_CAP, "Mint is capped!");
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
-        bytes32 blockRoot = blockhash(_blockNumber);
-        require(blockRoot != bytes32(0), "Block root unavailable!");
+        require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
         uint256 commitment =
             uint256(
                     keccak256(
                         abi.encodePacked(
-                            blockRoot,
+                            blockhash(_blockNumber),
                             _nullifier,
                             _remainingCoin,
-                            _proverFee,
-                            _broadcasterFee,
                             _revealedAmount,
-                            uint256(uint160(_revealedAmountReceiver)),
-                            extraCommitment
+                            burnExtraCommitment,
+                            proofExtraCommitment
                         )
                     )
                 ) >> 8;
@@ -106,7 +105,11 @@ contract BETH is ERC20 {
         require(rootCoin != 0, "Coin does not exist");
         require(coins[_remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
-            uint256(keccak256(abi.encodePacked(_coin, _amount, _remainingCoin, _broadcasterFee, uint256(uint160(_receiver))))) >> 8;
+            uint256(
+                    keccak256(
+                        abi.encodePacked(_coin, _amount, _remainingCoin, _broadcasterFee, uint256(uint160(_receiver)))
+                    )
+                ) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
         _mint(_receiver, _amount);
