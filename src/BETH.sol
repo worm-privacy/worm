@@ -47,23 +47,10 @@ contract BETH is ERC20, ReentrancyGuard {
         address _revealedAmountReceiver,
         uint256 _proverFee,
         address _prover,
-        address _swapperAddress,
-        uint256 _swapperAllowance,
-        bytes calldata _swapperCalldata
+        bytes calldata _swapper
     ) public nonReentrant {
         uint256 burnExtraCommitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            _broadcasterFee,
-                            _proverFee,
-                            _revealedAmountReceiver,
-                            _swapperAddress,
-                            _swapperAllowance,
-                            _swapperCalldata
-                        )
-                    )
-                ) >> 8;
+            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _swapper))) >> 8;
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
         require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
@@ -92,10 +79,12 @@ contract BETH is ERC20, ReentrancyGuard {
         }
         _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
 
-        if (_swapperAddress != address(0)) {
+        if (_swapper.length != 0) {
+            (address _swapperAddress, uint256 _swapperAllowance, bytes memory _swapperCalldata) =
+                abi.decode(_swapper, (address, uint256, bytes));
             _approve(_revealedAmountReceiver, _swapperAddress, _swapperAllowance);
             require(_swapperAddress.code.length > 0, "Target is not a contract");
-            (bool success, ) = _swapperAddress.call{value: 0}(_swapperCalldata);
+            (bool success,) = _swapperAddress.call{value: 0}(_swapperCalldata);
             require(success, "Swapper failed!");
         }
 
