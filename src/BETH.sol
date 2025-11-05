@@ -7,6 +7,8 @@ import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
+    event PostMintHookFailure(bytes returnData);
+
     uint256 public constant MINT_CAP = 10 ether;
 
     ProofOfBurnVerifier public proofOfBurnVerifier;
@@ -47,10 +49,11 @@ contract BETH is ERC20, ReentrancyGuard {
         address _revealedAmountReceiver,
         uint256 _proverFee,
         address _prover,
-        bytes calldata _swapper
+        bytes calldata _postMintHook
     ) public nonReentrant {
         uint256 burnExtraCommitment =
-            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _swapper))) >> 8;
+            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _postMintHook)))
+                >> 8;
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
         require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
@@ -79,13 +82,18 @@ contract BETH is ERC20, ReentrancyGuard {
         }
         _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
 
-        if (_swapper.length != 0) {
-            (address _swapperAddress, uint256 _swapperAllowance, bytes memory _swapperCalldata) =
-                abi.decode(_swapper, (address, uint256, bytes));
-            _approve(_revealedAmountReceiver, _swapperAddress, _swapperAllowance);
-            require(_swapperAddress.code.length > 0, "Target is not a contract");
-            (bool success,) = _swapperAddress.call{value: 0}(_swapperCalldata);
-            require(success, "Swapper failed!");
+        // Post-mint execution hook
+        if (_postMintHook.length != 0) {
+            (address hookAddress, uint256 hookAllowance, bytes memory hookCalldata) =
+                abi.decode(_postMintHook, (address, uint256, bytes));
+            _approve(_revealedAmountReceiver, hookAddress, hookAllowance);
+            require(hookAddress.code.length > 0, "Target is not a contract");
+            (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
+            _approve(_revealedAmountReceiver, hookAddress, 0);
+            // No need to force `success` to be true. Failure should not prevent the burner to get his BETH.
+            if (!success) {
+                emit PostMintHookFailure(returnData);
+            }
         }
 
         nullifiers[_nullifier] = true;
