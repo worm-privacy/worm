@@ -50,7 +50,8 @@ contract BETH is ERC20 {
         uint256 burnExtraCommitment =
             uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver))) >> 8;
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
-        require(_proverFee + _broadcasterFee + _revealedAmount <= MINT_CAP, "Mint is capped!");
+        require(_revealedAmount <= MINT_CAP, "Mint is capped!");
+        require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
         require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
@@ -74,10 +75,10 @@ contract BETH is ERC20 {
         if (_proverFee != 0) {
             _mint(_prover, _proverFee);
         }
-        _mint(_revealedAmountReceiver, _revealedAmount);
+        _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
         nullifiers[_nullifier] = true;
         coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
-        revealed[_remainingCoin] = _proverFee + _broadcasterFee + _revealedAmount;
+        revealed[_remainingCoin] = _revealedAmount;
     }
 
     /**
