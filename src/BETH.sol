@@ -2,10 +2,11 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
 
-contract BETH is ERC20 {
+contract BETH is ERC20, ReentrancyGuard {
     uint256 public constant MINT_CAP = 10 ether;
 
     ProofOfBurnVerifier public proofOfBurnVerifier;
@@ -45,10 +46,24 @@ contract BETH is ERC20 {
         uint256 _revealedAmount,
         address _revealedAmountReceiver,
         uint256 _proverFee,
-        address _prover
-    ) public {
+        address _prover,
+        address _swapperAddress,
+        uint256 _swapperAllowance,
+        bytes calldata _swapperCalldata
+    ) public nonReentrant {
         uint256 burnExtraCommitment =
-            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver))) >> 8;
+            uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            _broadcasterFee,
+                            _proverFee,
+                            _revealedAmountReceiver,
+                            _swapperAddress,
+                            _swapperAllowance,
+                            _swapperCalldata
+                        )
+                    )
+                ) >> 8;
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
         require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
@@ -76,6 +91,14 @@ contract BETH is ERC20 {
             _mint(_prover, _proverFee);
         }
         _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
+
+        if (_swapperAddress != address(0)) {
+            _approve(_revealedAmountReceiver, _swapperAddress, _swapperAllowance);
+            require(_swapperAddress.code.length > 0, "Target is not a contract");
+            (bool success, ) = _swapperAddress.call{value: 0}(_swapperCalldata);
+            require(success, "Swapper failed!");
+        }
+
         nullifiers[_nullifier] = true;
         coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
         revealed[_remainingCoin] = _revealedAmount;
