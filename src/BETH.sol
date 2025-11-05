@@ -22,16 +22,34 @@ contract BETH is ERC20, ReentrancyGuard {
         spendVerifier = new SpendVerifier();
     }
 
+    /**
+     * @notice Handles optional post-mint hooks for BETH recipients
+     * @dev Executes arbitrary calldata against a target contract with temporary token approval.
+     *      Failure does not revert the main mint; only emits an event.
+     * @param _bethOwner The address whose BETH is approved for the hook
+     * @param _hookData ABI-encoded (target address, allowance, calldata)
+     */
     function handleHook(address _bethOwner, bytes memory _hookData) internal {
-        (address hookAddress, uint256 hookAllowance, bytes memory hookCalldata) =
-            abi.decode(_hookData, (address, uint256, bytes));
-        _approve(_bethOwner, hookAddress, hookAllowance);
-        require(hookAddress.code.length > 0, "Target is not a contract");
-        (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
-        _approve(_bethOwner, hookAddress, 0);
-        // No need to force `success` to be true. Failure should not prevent the burner to get his BETH.
-        if (!success) {
-            emit HookFailure(returnData);
+        // Hooks are optional
+        if (_hookData.length != 0) {
+            // Decode the hook parameters
+            (address hookAddress, uint256 hookAllowance, bytes memory hookCalldata) =
+                abi.decode(_hookData, (address, uint256, bytes));
+
+            // Approve the hook to spend BETH
+            _approve(_bethOwner, hookAddress, hookAllowance);
+
+            // Execute the hook
+            require(hookAddress.code.length > 0, "Target is not a contract");
+            (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
+
+            // Reset approval to zero for safety
+            _approve(_bethOwner, hookAddress, 0);
+
+            // No need to force `success` to be true. Failure should not prevent the burner from receiving their BETH.
+            if (!success) {
+                emit HookFailure(returnData);
+            }
         }
     }
 
