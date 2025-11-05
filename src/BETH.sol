@@ -7,7 +7,7 @@ import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
-    event PostMintHookFailure(bytes returnData);
+    event HookFailure(bytes returnData);
 
     uint256 public constant MINT_CAP = 10 ether;
 
@@ -31,7 +31,7 @@ contract BETH is ERC20, ReentrancyGuard {
         _approve(_bethOwner, hookAddress, 0);
         // No need to force `success` to be true. Failure should not prevent the burner to get his BETH.
         if (!success) {
-            emit PostMintHookFailure(returnData);
+            emit HookFailure(returnData);
         }
     }
 
@@ -49,6 +49,8 @@ contract BETH is ERC20, ReentrancyGuard {
      * @param _revealedAmountReceiver Receiver of the directly revealed BETH.
      * @param _proverFee Fee paid to the prover who generated the zk proof.
      * @param _prover The address of the prover.
+     * @param _receiverPostMintHook The receiver may sell his BETH for ETH through a hook.
+     * @param _broadcasterFeePostMintHook The broadcaster may sell his BETH for ETH through a hook.
      */
     function mintCoin(
         uint256[2] calldata _pA,
@@ -65,18 +67,37 @@ contract BETH is ERC20, ReentrancyGuard {
         bytes calldata _receiverPostMintHook,
         bytes calldata _broadcasterFeePostMintHook
     ) public nonReentrant {
+        // Information bound to the burn (shifted right by 8 to fit within field elements).
+        // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
+        // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
+        // This ensures that the broadcaster and prover cannot alter the BETH receiver
+        // and cannot claim more BETH than the amount the burner has authorized.
         uint256 burnExtraCommitment =
             uint256(
                     keccak256(
                         abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _receiverPostMintHook)
                     )
                 ) >> 8;
+
+        // Information bound to the proof (shifted right by 8 to fit within field elements).
+        // The proof generation may be delegated to another party.
+        // They can attach their address to the proof so that no one can steal the proverFee
+        // by submitting the proof on their behalf.
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
+
+        // Disallow minting more than a MINT_CAP through a single burn.
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
+
+        // Prover-fee and broadcaster-fee are paid from the revealed-amount!
         require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
+
+        // Disallow minting a single burn-address twice.
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
+
         require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
+
+        // Circuit public inputs are passed through a compact keccak hash for gas optimization.
         uint256 commitment =
             uint256(
                     keccak256(
@@ -91,6 +112,7 @@ contract BETH is ERC20, ReentrancyGuard {
                     )
                 ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
+
         if (_broadcasterFee != 0) {
             _mint(msg.sender, _broadcasterFee);
         }
@@ -103,7 +125,8 @@ contract BETH is ERC20, ReentrancyGuard {
         handleHook(msg.sender, _broadcasterFeePostMintHook);
 
         nullifiers[_nullifier] = true;
-        coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
+
+        coins[_remainingCoin] = _remainingCoin; // The source-coin of a fresh coin is itself
         revealed[_remainingCoin] = _revealedAmount;
     }
 
