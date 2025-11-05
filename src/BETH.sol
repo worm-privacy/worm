@@ -113,14 +113,15 @@ contract BETH is ERC20, ReentrancyGuard {
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
 
-        require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
+        bytes32 blockHash = blockhash(_blockNumber);
+        require(blockHash != bytes32(0), "Block root unavailable!");
 
         // Circuit public inputs are passed through a compact keccak hash for gas optimization.
         uint256 commitment =
             uint256(
                     keccak256(
                         abi.encodePacked(
-                            blockhash(_blockNumber),
+                            blockHash,
                             _nullifier,
                             _remainingCoin,
                             _revealedAmount,
