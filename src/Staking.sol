@@ -67,9 +67,9 @@ contract Staking is IRewardPool {
     function release(uint256 _stakeId) external {
         StakeInfo storage inf = stakeInfos[_stakeId];
         require(inf.amount != 0, "StakeInfo unavailable");
-        require(currentEpoch() >= inf.releaseEpoch || currentEpoch() < inf.startingEpoch, "Stake is locked!");
+        require(currentEpoch() >= inf.releaseEpoch, "Stake is locked!");
         stakingToken.safeTransfer(inf.owner, inf.amount);
-        inf.amount = 0;
+        delete stakeInfos[_stakeId];
     }
 
     function claimReward(uint256 _fromEpoch, uint256 _count) external {
