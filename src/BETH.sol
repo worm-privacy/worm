@@ -5,10 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
+import {IRewardPool} from "./Staking.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
     uint256 public constant MINT_CAP = 10 ether;
 
+    IRewardPool public rewardPool;
     ProofOfBurnVerifier public proofOfBurnVerifier;
     SpendVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
@@ -49,11 +51,13 @@ contract BETH is ERC20, ReentrancyGuard {
         address _prover,
         bytes calldata _swapper
     ) public nonReentrant {
+        uint256 poolFee = _revealedAmount / 200; // 0.5%
+        uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
         uint256 burnExtraCommitment =
             uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _swapper))) >> 8;
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
-        require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
+        require(_proverFee + _broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
         require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
@@ -77,7 +81,12 @@ contract BETH is ERC20, ReentrancyGuard {
         if (_proverFee != 0) {
             _mint(_prover, _proverFee);
         }
-        _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
+        _mint(_revealedAmountReceiver, revealedAmountAfterFee - _broadcasterFee - _proverFee);
+
+        _mint(address(this), poolFee);
+        _approve(address(this), address(rewardPool), poolFee);
+        rewardPool.depositReward(poolFee);
+        _approve(address(this), address(rewardPool), 0);
 
         if (_swapper.length != 0) {
             (address _swapperAddress, uint256 _swapperAllowance, bytes memory _swapperCalldata) =
