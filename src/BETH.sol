@@ -3,9 +3,8 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
-import {SpendVerifier} from "./SpendVerifier.sol";
 import {IRewardPool} from "./Staking.sol";
+import {IVerifier} from "./IVerifier.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
     event HookFailure(bytes returnData);
@@ -16,15 +15,15 @@ contract BETH is ERC20, ReentrancyGuard {
     address initializer; // The address which has the permission to initialize the rewardPool
     IRewardPool public rewardPool;
 
-    ProofOfBurnVerifier public proofOfBurnVerifier;
-    SpendVerifier public spendVerifier;
+    IVerifier public proofOfBurnVerifier;
+    IVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
     mapping(uint256 => uint256) public coins; // Map each coin to its root coin
     mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
 
-    constructor() ERC20("Burned ETH", "BETH") {
-        proofOfBurnVerifier = new ProofOfBurnVerifier();
-        spendVerifier = new SpendVerifier();
+    constructor(IVerifier _proofOfBurnVerifier, IVerifier _spendVerifier) ERC20("Burned ETH", "BETH") {
+        proofOfBurnVerifier = _proofOfBurnVerifier;
+        spendVerifier = _spendVerifier;
         initializer = msg.sender;
     }
 

@@ -3,12 +3,53 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BETH} from "../src/BETH.sol";
+import {WORM} from "../src/WORM.sol";
+import {IVerifier} from "../src/IVerifier.sol";
+import {Staking} from "../src/Staking.sol";
+
+contract AlwaysVerify is IVerifier {
+    function verifyProof(
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
+        uint256[1] calldata _pubSignals
+    ) external returns (bool) {
+        return true;
+    }
+}
 
 contract BETHTest is Test {
     BETH public beth;
+    WORM public worm;
+    Staking public rewardPool;
+    address alice = address(0xa11ce);
+    address bob = address(0xb0b);
 
     function setUp() public {
-        beth = new BETH();
+        beth = new BETH(new AlwaysVerify(), new AlwaysVerify());
+        worm = new WORM(beth, alice, 10 ether);
+        rewardPool = new Staking(worm, beth);
+        beth.initRewardPool(rewardPool);
+    }
+
+    function test_mint() public {
+        assertEq(worm.balanceOf(alice), 10 ether);
+        beth.mintCoin(
+            [uint256(0), uint256(0)],
+            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+            [uint256(0), uint256(0)],
+            block.number - 1,
+            123,
+            234,
+            0.1 ether,
+            1 ether,
+            alice,
+            0.2 ether,
+            bob,
+            new bytes(0),
+            new bytes(0)
+        );
+        assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));
     }
 
     function test_proof_of_burn_public_commitment() public pure {
