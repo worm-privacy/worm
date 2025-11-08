@@ -50,6 +50,10 @@ contract BETHTest is Test {
             new bytes(0)
         );
         assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));
+        assertEq(beth.totalSupply(), 1 ether);
+        assertEq(beth.balanceOf(address(this)), 0.1 ether);
+        assertEq(beth.balanceOf(bob), 0.2 ether);
+        assertEq(beth.balanceOf(address(rewardPool)), (1 ether / 200));
     }
 
     function test_proof_of_burn_public_commitment() public pure {
