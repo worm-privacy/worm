@@ -56,6 +56,39 @@ contract BETHTest is Test {
         assertEq(beth.balanceOf(address(rewardPool)), (1 ether / 200));
     }
 
+    function test_spend() public {
+        assertEq(worm.balanceOf(alice), 10 ether);
+        beth.mintCoin(
+            [uint256(0), uint256(0)],
+            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+            [uint256(0), uint256(0)],
+            block.number - 1,
+            123,
+            234,
+            0.1 ether,
+            1 ether,
+            alice,
+            0.2 ether,
+            bob,
+            new bytes(0),
+            new bytes(0)
+        );
+        beth.spendCoin(
+            [uint256(0), uint256(0)],
+            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+            [uint256(0), uint256(0)],
+            234,
+            1 ether,
+            456,
+            0.23 ether,
+            bob
+        );
+        assertEq(beth.totalSupply(), 1 ether + 1 ether);
+        assertEq(beth.balanceOf(address(this)), 0.33 ether);
+        assertEq(beth.balanceOf(bob), 0.2 ether + 0.765 ether);
+        assertEq(beth.balanceOf(address(rewardPool)), 2 * (1 ether / 200));
+    }
+
     function test_proof_of_burn_public_commitment() public pure {
         assertEq(
             uint256(
