@@ -8,6 +8,8 @@ import {SpendVerifier} from "./SpendVerifier.sol";
 import {IRewardPool} from "./Staking.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
+    event HookFailure(bytes returnData);
+
     uint256 public constant MINT_CAP = 10 ether;
 
     IRewardPool public rewardPool;
@@ -20,6 +22,37 @@ contract BETH is ERC20, ReentrancyGuard {
     constructor() ERC20("Burned ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
         spendVerifier = new SpendVerifier();
+    }
+
+    /**
+     * @notice Handles optional post-mint hooks for BETH recipients
+     * @dev Executes arbitrary calldata against a target contract with temporary token approval.
+     *      Failure does not revert the main mint; only emits an event.
+     * @param _bethOwner The address whose BETH is approved for the hook
+     * @param _hookData ABI-encoded (target address, allowance, calldata)
+     */
+    function handleHook(address _bethOwner, bytes memory _hookData) internal {
+        // Hooks are optional
+        if (_hookData.length != 0) {
+            // Decode the hook parameters
+            (address hookAddress, uint256 hookAllowance, bytes memory hookCalldata) =
+                abi.decode(_hookData, (address, uint256, bytes));
+
+            // Approve the hook to spend BETH
+            _approve(_bethOwner, hookAddress, hookAllowance);
+
+            // Execute the hook
+            require(hookAddress.code.length > 0, "Target is not a contract");
+            (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
+
+            // Reset approval to zero for safety
+            _approve(_bethOwner, hookAddress, 0);
+
+            // No need to force `success` to be true. Failure should not prevent the burner from receiving their BETH.
+            if (!success) {
+                emit HookFailure(returnData);
+            }
+        }
     }
 
     function initRewardPool(IRewardPool _rewardPool) external {
@@ -41,6 +74,8 @@ contract BETH is ERC20, ReentrancyGuard {
      * @param _revealedAmountReceiver Receiver of the directly revealed BETH.
      * @param _proverFee Fee paid to the prover who generated the zk proof.
      * @param _prover The address of the prover.
+     * @param _receiverPostMintHook The receiver may sell his BETH for ETH through a hook.
+     * @param _broadcasterFeePostMintHook The broadcaster may sell his BETH for ETH through a hook.
      */
     function mintCoin(
         uint256[2] calldata _pA,
@@ -54,25 +89,51 @@ contract BETH is ERC20, ReentrancyGuard {
         address _revealedAmountReceiver,
         uint256 _proverFee,
         address _prover,
-        bytes calldata _swapper
+        bytes calldata _receiverPostMintHook,
+        bytes calldata _broadcasterFeePostMintHook
     ) public nonReentrant {
         require(address(rewardPool) != address(0), "Reward pool not initialized!");
 
+        // Information bound to the burn (shifted right by 8 to fit within field elements).
+        // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
+        // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
+        // This ensures that the broadcaster and prover cannot alter the BETH receiver
+        // and cannot claim more BETH than the amount the burner has authorized.
+        uint256 burnExtraCommitment =
+            uint256(
+                    keccak256(
+                        abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _receiverPostMintHook)
+                    )
+                ) >> 8;
+
         uint256 poolFee = _revealedAmount / 200; // 0.5%
         uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
-        uint256 burnExtraCommitment =
-            uint256(keccak256(abi.encodePacked(_broadcasterFee, _proverFee, _revealedAmountReceiver, _swapper))) >> 8;
+
+        // Information bound to the proof (shifted right by 8 to fit within field elements).
+        // The proof generation may be delegated to another party.
+        // They can attach their address to the proof so that no one can steal the proverFee
+        // by submitting the proof on their behalf.
         uint256 proofExtraCommitment = uint256(keccak256(abi.encodePacked(_prover))) >> 8;
+
+        // Disallow minting more than a MINT_CAP through a single burn.
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
+
+        // Prover-fee and broadcaster-fee are paid from the revealed-amount!
         require(_proverFee + _broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
+
+        // Disallow minting a single burn-address twice.
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
         require(coins[_remainingCoin] == 0, "Coin already minted!");
-        require(blockhash(_blockNumber) != bytes32(0), "Block root unavailable!");
+
+        bytes32 blockHash = blockhash(_blockNumber);
+        require(blockHash != bytes32(0), "Block root unavailable!");
+
+        // Circuit public inputs are passed through a compact keccak hash for gas optimization.
         uint256 commitment =
             uint256(
                     keccak256(
                         abi.encodePacked(
-                            blockhash(_blockNumber),
+                            blockHash,
                             _nullifier,
                             _remainingCoin,
                             _revealedAmount,
@@ -90,22 +151,17 @@ contract BETH is ERC20, ReentrancyGuard {
         }
         _mint(_revealedAmountReceiver, revealedAmountAfterFee - _broadcasterFee - _proverFee);
 
+        handleHook(_revealedAmountReceiver, _receiverPostMintHook);
+        handleHook(msg.sender, _broadcasterFeePostMintHook);
+
         _mint(address(this), poolFee);
         _approve(address(this), address(rewardPool), poolFee);
         rewardPool.depositReward(poolFee);
         _approve(address(this), address(rewardPool), 0);
 
-        if (_swapper.length != 0) {
-            (address _swapperAddress, uint256 _swapperAllowance, bytes memory _swapperCalldata) =
-                abi.decode(_swapper, (address, uint256, bytes));
-            _approve(_revealedAmountReceiver, _swapperAddress, _swapperAllowance);
-            require(_swapperAddress.code.length > 0, "Target is not a contract");
-            (bool success,) = _swapperAddress.call{value: 0}(_swapperCalldata);
-            require(success, "Swapper failed!");
-        }
-
         nullifiers[_nullifier] = true;
-        coins[_remainingCoin] = _remainingCoin; // Minted coin is a root coin
+
+        coins[_remainingCoin] = _remainingCoin; // The source-coin of a fresh coin is itself
         revealed[_remainingCoin] = _revealedAmount;
     }
 
