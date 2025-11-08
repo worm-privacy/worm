@@ -197,13 +197,7 @@ contract BETH is ERC20, ReentrancyGuard {
         require(rootCoin != 0, "Coin does not exist");
         require(coins[_remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            _coin, _revealedAmount, _remainingCoin, _broadcasterFee, uint256(uint160(_receiver))
-                        )
-                    )
-                ) >> 8;
+            uint256(keccak256(abi.encodePacked(_coin, _revealedAmount, _remainingCoin, extraCommitment))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
         _mint(_receiver, revealedAmountAfterFee - _broadcasterFee);
