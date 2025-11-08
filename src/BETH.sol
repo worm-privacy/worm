@@ -5,11 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ProofOfBurnVerifier} from "./ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "./SpendVerifier.sol";
+import {IRewardPool} from "./Staking.sol";
 
 contract BETH is ERC20, ReentrancyGuard {
     event HookFailure(bytes returnData);
 
     uint256 public constant MINT_CAP = 10 ether;
+    uint256 public constant POOL_SHARE_INV = 200; // 1 / 200 = 0.5%
+
+    address initializer; // The address which has the permission to initialize the rewardPool
+    IRewardPool public rewardPool;
 
     ProofOfBurnVerifier public proofOfBurnVerifier;
     SpendVerifier public spendVerifier;
@@ -20,6 +25,13 @@ contract BETH is ERC20, ReentrancyGuard {
     constructor() ERC20("Burned ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
         spendVerifier = new SpendVerifier();
+        initializer = msg.sender;
+    }
+
+    function initRewardPool(IRewardPool _rewardPool) external {
+        require(msg.sender == initializer, "Only the initializer can initialize!");
+        require(address(rewardPool) == address(0), "Reward pool already set!");
+        rewardPool = _rewardPool;
     }
 
     /**
@@ -85,6 +97,8 @@ contract BETH is ERC20, ReentrancyGuard {
         bytes calldata _receiverPostMintHook,
         bytes calldata _broadcasterFeePostMintHook
     ) public nonReentrant {
+        require(address(rewardPool) != address(0), "Reward pool not initialized!");
+
         // Information bound to the burn (shifted right by 8 to fit within field elements).
         // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
         // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
@@ -97,6 +111,9 @@ contract BETH is ERC20, ReentrancyGuard {
                     )
                 ) >> 8;
 
+        uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
+        uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
+
         // Information bound to the proof (shifted right by 8 to fit within field elements).
         // The proof generation may be delegated to another party.
         // They can attach their address to the proof so that no one can steal the proverFee
@@ -107,7 +124,7 @@ contract BETH is ERC20, ReentrancyGuard {
         require(_revealedAmount <= MINT_CAP, "Mint is capped!");
 
         // Prover-fee and broadcaster-fee are paid from the revealed-amount!
-        require(_proverFee + _broadcasterFee <= _revealedAmount, "More fee than revealed!");
+        require(_proverFee + _broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
         // Disallow minting a single burn-address twice.
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
@@ -131,17 +148,21 @@ contract BETH is ERC20, ReentrancyGuard {
                     )
                 ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-
         if (_broadcasterFee != 0) {
             _mint(msg.sender, _broadcasterFee);
         }
         if (_proverFee != 0) {
             _mint(_prover, _proverFee);
         }
-        _mint(_revealedAmountReceiver, _revealedAmount - _broadcasterFee - _proverFee);
+        _mint(_revealedAmountReceiver, revealedAmountAfterFee - _broadcasterFee - _proverFee);
 
         handleHook(_revealedAmountReceiver, _receiverPostMintHook);
         handleHook(msg.sender, _broadcasterFeePostMintHook);
+
+        _mint(address(this), poolFee);
+        _approve(address(this), address(rewardPool), poolFee);
+        rewardPool.depositReward(poolFee);
+        _approve(address(this), address(rewardPool), 0);
 
         nullifiers[_nullifier] = true;
 
@@ -155,7 +176,7 @@ contract BETH is ERC20, ReentrancyGuard {
      * @param _pB zkSNARK proof element B.
      * @param _pC zkSNARK proof element C.
      * @param _coin The encrypted coin being spent.
-     * @param _amount The amount being revealed/minted to the receiver.
+     * @param _revealedAmount The amount being revealed/minted to the receiver.
      * @param _remainingCoin The new encrypted coin for the remaining balance.
      * @param _broadcasterFee Fee paid to the transaction sender.
      * @param _receiver The address receiving the revealed amount.
@@ -165,26 +186,29 @@ contract BETH is ERC20, ReentrancyGuard {
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC,
         uint256 _coin,
-        uint256 _amount,
+        uint256 _revealedAmount,
         uint256 _remainingCoin,
         uint256 _broadcasterFee,
         address _receiver
     ) public {
+        require(address(rewardPool) != address(0), "Reward pool not initialized!");
+
+        uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
+        uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
+        require(_broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
+
         uint256 rootCoin = coins[_coin];
+        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_broadcasterFee, _receiver))) >> 8;
         require(rootCoin != 0, "Coin does not exist");
         require(coins[_remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(_coin, _amount, _remainingCoin, _broadcasterFee, uint256(uint160(_receiver)))
-                    )
-                ) >> 8;
+            uint256(keccak256(abi.encodePacked(_coin, _revealedAmount, _remainingCoin, extraCommitment))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
-        _mint(_receiver, _amount);
+        _mint(_receiver, revealedAmountAfterFee - _broadcasterFee);
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
-        revealed[rootCoin] += _amount + _broadcasterFee;
+        revealed[rootCoin] += _revealedAmount;
         require(revealed[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
