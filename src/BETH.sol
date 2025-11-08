@@ -11,8 +11,11 @@ contract BETH is ERC20, ReentrancyGuard {
     event HookFailure(bytes returnData);
 
     uint256 public constant MINT_CAP = 10 ether;
+    uint256 public constant POOL_SHARE_INV = 200; // 1 / 200 = 0.5%
 
+    address initializer; // The address which has the permission to initialize the rewardPool
     IRewardPool public rewardPool;
+
     ProofOfBurnVerifier public proofOfBurnVerifier;
     SpendVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
@@ -22,6 +25,13 @@ contract BETH is ERC20, ReentrancyGuard {
     constructor() ERC20("Burned ETH", "BETH") {
         proofOfBurnVerifier = new ProofOfBurnVerifier();
         spendVerifier = new SpendVerifier();
+        initializer = msg.sender;
+    }
+
+    function initRewardPool(IRewardPool _rewardPool) external {
+        require(msg.sender == initializer, "Only the initializer can initialize!");
+        require(address(rewardPool) == address(0), "Reward pool already set!");
+        rewardPool = _rewardPool;
     }
 
     /**
@@ -53,11 +63,6 @@ contract BETH is ERC20, ReentrancyGuard {
                 emit HookFailure(returnData);
             }
         }
-    }
-
-    function initRewardPool(IRewardPool _rewardPool) external {
-        require(address(rewardPool) == address(0), "Reward pool already set!");
-        rewardPool = _rewardPool;
     }
 
     /**
@@ -106,7 +111,7 @@ contract BETH is ERC20, ReentrancyGuard {
                     )
                 ) >> 8;
 
-        uint256 poolFee = _revealedAmount / 200; // 0.5%
+        uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
         uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
 
         // Information bound to the proof (shifted right by 8 to fit within field elements).
@@ -188,7 +193,7 @@ contract BETH is ERC20, ReentrancyGuard {
     ) public {
         require(address(rewardPool) != address(0), "Reward pool not initialized!");
 
-        uint256 poolFee = _revealedAmount / 200; // 0.5%
+        uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
         uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
         require(_broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
