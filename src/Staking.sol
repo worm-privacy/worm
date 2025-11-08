@@ -16,6 +16,7 @@ contract Staking is IRewardPool {
         uint256 amount;
         uint256 startingEpoch;
         uint256 releaseEpoch;
+        bool released;
     }
 
     uint256 constant EPOCH_TIME = 7 days;
@@ -48,6 +49,7 @@ contract Staking is IRewardPool {
     }
 
     function lock(uint256 _amount, uint256 _numEpochs) external {
+        require(_amount > 0, "No amount specified!");
         uint256 startingEpoch = currentEpoch() + 1;
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         for (uint256 i = startingEpoch; i < startingEpoch + _numEpochs; i++) {
@@ -59,7 +61,8 @@ contract Staking is IRewardPool {
                 owner: msg.sender,
                 amount: _amount,
                 startingEpoch: startingEpoch,
-                releaseEpoch: startingEpoch + _numEpochs
+                releaseEpoch: startingEpoch + _numEpochs,
+                released: false
             })
         );
     }
@@ -67,9 +70,10 @@ contract Staking is IRewardPool {
     function release(uint256 _stakeId) external {
         StakeInfo storage inf = stakeInfos[_stakeId];
         require(inf.amount != 0, "StakeInfo unavailable");
+        require(!inf.released, "Already released!");
         require(currentEpoch() >= inf.releaseEpoch, "Stake is locked!");
         stakingToken.safeTransfer(inf.owner, inf.amount);
-        delete stakeInfos[_stakeId];
+        inf.released = true;
     }
 
     function claimReward(uint256 _fromEpoch, uint256 _count) external {
