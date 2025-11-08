@@ -33,6 +33,13 @@ contract BETH is ERC20, ReentrancyGuard {
         rewardPool = _rewardPool;
     }
 
+    function mintForRewardPool(uint256 _amount) internal {
+        _mint(address(this), _amount);
+        _approve(address(this), address(rewardPool), _amount);
+        rewardPool.depositReward(_amount);
+        _approve(address(this), address(rewardPool), 0);
+    }
+
     /**
      * @notice Handles optional post-mint hooks for BETH recipients
      * @dev Executes arbitrary calldata against a target contract with temporary token approval.
@@ -158,10 +165,7 @@ contract BETH is ERC20, ReentrancyGuard {
         handleHook(_revealedAmountReceiver, _receiverPostMintHook);
         handleHook(msg.sender, _broadcasterFeePostMintHook);
 
-        _mint(address(this), poolFee);
-        _approve(address(this), address(rewardPool), poolFee);
-        rewardPool.depositReward(poolFee);
-        _approve(address(this), address(rewardPool), 0);
+        mintForRewardPool(poolFee);
 
         nullifiers[_nullifier] = true;
 
@@ -205,6 +209,9 @@ contract BETH is ERC20, ReentrancyGuard {
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
         _mint(msg.sender, _broadcasterFee);
         _mint(_receiver, revealedAmountAfterFee - _broadcasterFee);
+
+        mintForRewardPool(poolFee);
+
         coins[_coin] = 0;
         coins[_remainingCoin] = rootCoin;
         revealed[rootCoin] += _revealedAmount;
