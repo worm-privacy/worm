@@ -21,10 +21,18 @@ contract BETH is ERC20, ReentrancyGuard {
     mapping(uint256 => uint256) public coins; // Map each coin to its root coin
     mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
 
-    constructor(IVerifier _proofOfBurnVerifier, IVerifier _spendVerifier) ERC20("Burned ETH", "BETH") {
+    constructor(
+        IVerifier _proofOfBurnVerifier,
+        IVerifier _spendVerifier,
+        address _premineAddress,
+        uint256 _premineAmount
+    ) ERC20("Burned ETH", "BETH") {
         proofOfBurnVerifier = _proofOfBurnVerifier;
         spendVerifier = _spendVerifier;
         initializer = msg.sender;
+        if (_premineAddress != address(0)) {
+            _mint(_premineAddress, _premineAmount);
+        }
     }
 
     function initRewardPool(IRewardPool _rewardPool) external {

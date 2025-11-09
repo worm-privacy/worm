@@ -17,14 +17,14 @@ contract BETHScript is Script {
 
     function setUp() public {}
 
-    function run() public {
+    function run(address _premineAddress, uint256 _bethPremine, uint256 _wormPremine) public {
         vm.startBroadcast();
 
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
-        
-        beth = new BETH(proofOfBurnVerifier, spendVeifier);
-        worm = new WORM(IERC20(beth), address(beth), 0);
+
+        beth = new BETH(proofOfBurnVerifier, spendVeifier, _premineAddress, _bethPremine);
+        worm = new WORM(IERC20(beth), _premineAddress, _wormPremine);
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
         console.log("BETH", address(beth));

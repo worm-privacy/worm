@@ -33,7 +33,9 @@ contract WORM is ERC20 {
         bethContract = _bethContract;
         startingTimestamp = block.timestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
-        _mint(_premineAddress, _premineAmount);
+        if (_premineAddress != address(0)) {
+            _mint(_premineAddress, _premineAmount);
+        }
     }
 
     /**
