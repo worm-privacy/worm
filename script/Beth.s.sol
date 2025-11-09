@@ -27,6 +27,9 @@ contract BETHScript is Script {
         worm = new WORM(IERC20(beth), address(beth), 0);
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
+        console.log("BETH", address(beth));
+        console.log("WORM", address(worm));
+        console.log("Staking", address(staking));
 
         vm.stopBroadcast();
     }
