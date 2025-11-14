@@ -26,10 +26,10 @@ contract Staking is IRewardPool {
 
     uint256 public startingTime;
 
-    mapping(uint256 => uint256) epochRewards;
+    mapping(uint256 => uint256) public epochRewards;
 
-    mapping(uint256 => uint256) totalStakings;
-    mapping(uint256 => mapping(address => uint256)) userStakings;
+    mapping(uint256 => uint256) public totalStakings;
+    mapping(uint256 => mapping(address => uint256)) public userStakings;
 
     StakeInfo[] public stakeInfos;
 
