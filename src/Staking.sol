@@ -9,6 +9,8 @@ interface IRewardPool {
 }
 
 contract Staking is IRewardPool {
+    uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
+
     using SafeERC20 for IERC20;
 
     struct StakeInfo {
@@ -19,7 +21,7 @@ contract Staking is IRewardPool {
         bool released;
     }
 
-    uint256 constant EPOCH_TIME = 7 days;
+    uint256 constant EPOCH_DURATION = 7 days;
 
     IERC20 public stakingToken;
     IERC20 public rewardToken;
@@ -40,7 +42,49 @@ contract Staking is IRewardPool {
     }
 
     function currentEpoch() public view returns (uint256) {
-        return (block.timestamp - startingTime) / EPOCH_TIME;
+        return (block.timestamp - startingTime) / EPOCH_DURATION;
+    }
+
+    struct Info {
+        uint256 currentEpoch;
+        uint256 epochRemainingTime;
+        uint256 since;
+        uint256[] userLocks;
+        uint256[] totalLocks;
+        uint256[] rewards;
+    }
+
+    /**
+     * @notice Returns general contract statistics and lock details for a user.
+     * @dev Provides current epoch info, remaining time in the current epoch, and user/total locks and rewards for a range of epochs.
+     * @param user The address of the user to query.
+     * @param since The starting epoch index for which to retrieve information.
+     * @param count The number of epochs to include in the response.
+     * @return An `Info` struct containing global and user-specific information.
+     */
+    function info(address user, uint256 since, uint256 count) public view returns (Info memory) {
+        if (since == 0 && count == 0) {
+            uint256 epoch = currentEpoch();
+            since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
+            count = 1 + 2 * DEFAULT_INFO_MARGIN;
+        }
+        uint256 epochRemainingTime = block.timestamp - startingTime - currentEpoch() * EPOCH_DURATION;
+        uint256[] memory rewards = new uint256[](count);
+        uint256[] memory userLocks = new uint256[](count);
+        uint256[] memory totalLocks = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            userLocks[i] = userStakings[i + since][user];
+            totalLocks[i] = totalStakings[i + since];
+            rewards[i] = epochRewards[i + since];
+        }
+        return Info({
+            currentEpoch: currentEpoch(),
+            since: since,
+            epochRemainingTime: epochRemainingTime,
+            userLocks: userLocks,
+            totalLocks: totalLocks,
+            rewards: rewards
+        });
     }
 
     function depositReward(uint256 _amount) external {
