@@ -122,6 +122,7 @@ contract WORM is ERC20 {
         uint256 totalWorm;
         uint256 totalBeth;
         uint256 currentEpoch;
+        uint256 currentEpochReward;
         uint256 epochRemainingTime;
         uint256 since;
         uint256[] userContribs;
@@ -155,6 +156,7 @@ contract WORM is ERC20 {
             totalWorm: totalWorm,
             totalBeth: totalBeth,
             currentEpoch: currentEpoch(),
+            currentEpochReward: currentReward(),
             since: since,
             epochRemainingTime: epochRemainingTime,
             userContribs: userContribs,
