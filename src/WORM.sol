@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract WORM is ERC20 {
-    event Participated(address participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
-    event Claimed(address claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
+    event Participated(address indexed participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
+    event Claimed(address indexed claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
 
     uint256 constant EPOCH_DURATION = 600 seconds;
     uint256 constant INITIAL_REWARD_PER_EPOCH = 50 ether;
