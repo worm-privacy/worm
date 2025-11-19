@@ -107,35 +107,43 @@ contract BETH is ERC20, ReentrancyGuard {
     }
 
     /*
-     * @param _pA zkSNARK proof element A.
-     * @param _pB zkSNARK proof element B.
-     * @param _pC zkSNARK proof element C.
-     * @param _blockNumber The block number whose state root is used in the proof.
-     * @param _nullifier The nullifier derived from Poseidon2(POSEIDON_NULLIFIER_PREFIX, burnKey).
-     * @param _remainingCoin The encrypted leftover balance commitment.
-     * @param _broadcasterFee Fee paid to the relayer who submits the proof.
-     * @param _revealedAmount Amount directly revealed (minted to receiver).
-     * @param _revealedAmountReceiver Receiver of the directly revealed BETH.
-     * @param _proverFee Fee paid to the prover who generated the zk proof.
-     * @param _prover The address of the prover.
-     * @param _receiverPostMintHook The receiver may sell his BETH for ETH through a hook.
-     * @param _broadcasterFeePostMintHook The broadcaster may sell his BETH for ETH through a hook.
+     * pA zkSNARK proof element A.
+     * pB zkSNARK proof element B.
+     * pC zkSNARK proof element C.
+     * blockNumber The block number whose state root is used in the proof.
+     * nullifier The nullifier derived from Poseidon2(POSEIDON_NULLIFIER_PREFIX, burnKey).
+     * remainingCoin The encrypted leftover balance commitment.
+     * broadcasterFee Fee paid to the relayer who submits the proof.
+     * revealedAmount Amount directly revealed (minted to receiver).
+     * revealedAmountReceiver Receiver of the directly revealed BETH.
+     * proverFee Fee paid to the prover who generated the zk proof.
+     * prover The address of the prover.
+     * receiverPostMintHook The receiver may sell his BETH for ETH through a hook.
+     * broadcasterFeePostMintHook The broadcaster may sell his BETH for ETH through a hook.
      */
     struct MintParams {
-        uint256[2] _pA;
-        uint256[2][2] _pB;
-        uint256[2] _pC;
-        uint256 _blockNumber;
-        uint256 _nullifier;
-        uint256 _remainingCoin;
-        uint256 _broadcasterFee;
-        uint256 _revealedAmount;
-        address _revealedAmountReceiver;
-        uint256 _proverFee;
-        address _prover;
-        bytes _receiverPostMintHook;
-        bytes _broadcasterFeePostMintHook;
-        bytes _proverFeePostMintHook;
+        // Proof elements
+        uint256[2] pA;
+        uint256[2][2] pB;
+        uint256[2] pC;
+
+        uint256 blockNumber;
+        uint256 nullifier;
+        uint256 remainingCoin;
+
+        // Broadcaster's share
+        uint256 broadcasterFee;
+        bytes broadcasterFeePostMintHook;
+
+        // Prover's share
+        uint256 proverFee;
+        address prover;
+        bytes proverFeePostMintHook;
+
+        // Burner's share (revealedAmountAfterFee - broadcasterFee - proverFee)
+        uint256 revealedAmount;
+        address revealedAmountReceiver;
+        bytes receiverPostMintHook;
     }
 
     /**
@@ -153,37 +161,35 @@ contract BETH is ERC20, ReentrancyGuard {
             uint256(
                     keccak256(
                         abi.encodePacked(
-                            _mintParams._broadcasterFee,
-                            _mintParams._proverFee,
-                            _mintParams._revealedAmountReceiver,
-                            _mintParams._receiverPostMintHook
+                            _mintParams.broadcasterFee,
+                            _mintParams.proverFee,
+                            _mintParams.revealedAmountReceiver,
+                            _mintParams.receiverPostMintHook
                         )
                     )
                 ) >> 8;
 
-        uint256 poolFee = _mintParams._revealedAmount / POOL_SHARE_INV; // 0.5%
-        uint256 revealedAmountAfterFee = _mintParams._revealedAmount - poolFee;
+        uint256 poolFee = _mintParams.revealedAmount / POOL_SHARE_INV; // 0.5%
+        uint256 revealedAmountAfterFee = _mintParams.revealedAmount - poolFee;
 
         // Information bound to the proof (shifted right by 8 to fit within field elements).
         // The proof generation may be delegated to another party.
         // They can attach their address to the proof so that no one can steal the proverFee
         // by submitting the proof on their behalf.
         uint256 proofExtraCommitment =
-            uint256(keccak256(abi.encodePacked(_mintParams._prover, _mintParams._proverFeePostMintHook))) >> 8;
+            uint256(keccak256(abi.encodePacked(_mintParams.prover, _mintParams.proverFeePostMintHook))) >> 8;
 
         // Disallow minting more than a MINT_CAP through a single burn.
-        require(_mintParams._revealedAmount <= MINT_CAP, "Mint is capped!");
+        require(_mintParams.revealedAmount <= MINT_CAP, "Mint is capped!");
 
         // Prover-fee and broadcaster-fee are paid from the revealed-amount!
-        require(
-            _mintParams._proverFee + _mintParams._broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!"
-        );
+        require(_mintParams.proverFee + _mintParams.broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
         // Disallow minting a single burn-address twice.
-        require(!nullifiers[_mintParams._nullifier], "Nullifier already consumed!");
-        require(coinSource[_mintParams._remainingCoin] == 0, "Coin already minted!");
+        require(!nullifiers[_mintParams.nullifier], "Nullifier already consumed!");
+        require(coinSource[_mintParams.remainingCoin] == 0, "Coin already minted!");
 
-        bytes32 blockHash = blockhash(_mintParams._blockNumber);
+        bytes32 blockHash = blockhash(_mintParams.blockNumber);
         require(blockHash != bytes32(0), "Block root unavailable!");
 
         // Circuit public inputs are passed through a compact keccak hash for gas optimization.
@@ -192,33 +198,33 @@ contract BETH is ERC20, ReentrancyGuard {
                     keccak256(
                         abi.encodePacked(
                             blockHash,
-                            _mintParams._nullifier,
-                            _mintParams._remainingCoin,
-                            _mintParams._revealedAmount,
+                            _mintParams.nullifier,
+                            _mintParams.remainingCoin,
+                            _mintParams.revealedAmount,
                             burnExtraCommitment,
                             proofExtraCommitment
                         )
                     )
                 ) >> 8;
         require(
-            proofOfBurnVerifier.verifyProof(_mintParams._pA, _mintParams._pB, _mintParams._pC, [commitment]),
+            proofOfBurnVerifier.verifyProof(_mintParams.pA, _mintParams.pB, _mintParams.pC, [commitment]),
             "Invalid proof!"
         );
 
-        mintAndTransfer(_mintParams._prover, _mintParams._proverFee, _mintParams._proverFeePostMintHook);
-        mintAndTransfer(msg.sender, _mintParams._broadcasterFee, _mintParams._broadcasterFeePostMintHook);
+        mintAndTransfer(_mintParams.prover, _mintParams.proverFee, _mintParams.proverFeePostMintHook);
+        mintAndTransfer(msg.sender, _mintParams.broadcasterFee, _mintParams.broadcasterFeePostMintHook);
         mintAndTransfer(
-            _mintParams._revealedAmountReceiver,
-            revealedAmountAfterFee - _mintParams._broadcasterFee - _mintParams._proverFee,
-            _mintParams._receiverPostMintHook
+            _mintParams.revealedAmountReceiver,
+            revealedAmountAfterFee - _mintParams.broadcasterFee - _mintParams.proverFee,
+            _mintParams.receiverPostMintHook
         );
 
         mintForRewardPool(poolFee);
 
-        nullifiers[_mintParams._nullifier] = true;
+        nullifiers[_mintParams.nullifier] = true;
 
-        coinSource[_mintParams._remainingCoin] = _mintParams._remainingCoin; // The source-coin of a fresh coin is itself
-        coinRevealed[_mintParams._remainingCoin] = _mintParams._revealedAmount;
+        coinSource[_mintParams.remainingCoin] = _mintParams.remainingCoin; // The source-coin of a fresh coin is itself
+        coinRevealed[_mintParams.remainingCoin] = _mintParams.revealedAmount;
     }
 
     /**
