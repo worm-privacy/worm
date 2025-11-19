@@ -35,10 +35,25 @@ contract BETH is ERC20, ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice Initializes the reward pool reference for this contract
+     * @dev Can only be called once by the designated initializer.
+     *      Prevents accidental or malicious re-initialization by enforcing
+     *      that the stored reward pool address is zero.
+     * @param _rewardPool The reward pool contract that will receive minted rewards
+     */
     function initRewardPool(IRewardPool _rewardPool) external {
         require(msg.sender == initializer, "Only the initializer can initialize!");
         require(address(rewardPool) == address(0), "Reward pool already set!");
         rewardPool = _rewardPool;
+    }
+
+    /**
+     * @dev Reverts if the reward pool address is still zero.
+     */
+    modifier isInitialized() {
+        require(address(rewardPool) != address(0), "Reward pool not initialized!");
+        _;
     }
 
     /**
@@ -114,9 +129,7 @@ contract BETH is ERC20, ReentrancyGuard {
         address _prover,
         bytes calldata _receiverPostMintHook,
         bytes calldata _broadcasterFeePostMintHook
-    ) public nonReentrant {
-        require(address(rewardPool) != address(0), "Reward pool not initialized!");
-
+    ) public nonReentrant isInitialized {
         // Information bound to the burn (shifted right by 8 to fit within field elements).
         // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
         // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
@@ -209,9 +222,7 @@ contract BETH is ERC20, ReentrancyGuard {
         uint256 _remainingCoin,
         uint256 _broadcasterFee,
         address _receiver
-    ) public {
-        require(address(rewardPool) != address(0), "Reward pool not initialized!");
-
+    ) public isInitialized {
         uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
         uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
         require(_broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
