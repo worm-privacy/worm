@@ -18,8 +18,8 @@ contract BETH is ERC20, ReentrancyGuard {
     IVerifier public proofOfBurnVerifier;
     IVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
-    mapping(uint256 => uint256) public coins; // Map each coin to its root coin
-    mapping(uint256 => uint256) public revealed; // Total revealed amount of a root coin
+    mapping(uint256 => uint256) public coinSource; // Map each coin to its root coin
+    mapping(uint256 => uint256) public coinReveled; // Total revealed amount of a root coin
 
     constructor(
         IVerifier _proofOfBurnVerifier,
@@ -41,6 +41,12 @@ contract BETH is ERC20, ReentrancyGuard {
         rewardPool = _rewardPool;
     }
 
+    /**
+     * @notice Mints tokens directly to this contract and deposits them into the reward pool
+     * @dev Temporarily approves the reward pool to pull freshly minted tokens.
+     *      Approval is reset to zero after the deposit to prevent lingering allowances.
+     * @param _amount The number of tokens to mint and transfer to the reward pool
+     */
     function mintForRewardPool(uint256 _amount) internal {
         _mint(address(this), _amount);
         _approve(address(this), address(rewardPool), _amount);
@@ -65,7 +71,6 @@ contract BETH is ERC20, ReentrancyGuard {
             this.approve(hookAddress, hookAllowance);
 
             // Execute the hook
-            require(hookAddress.code.length > 0, "Target is not a contract");
             (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
 
             // Reset approval to zero for safety
@@ -141,7 +146,7 @@ contract BETH is ERC20, ReentrancyGuard {
 
         // Disallow minting a single burn-address twice.
         require(!nullifiers[_nullifier], "Nullifier already consumed!");
-        require(coins[_remainingCoin] == 0, "Coin already minted!");
+        require(coinSource[_remainingCoin] == 0, "Coin already minted!");
 
         bytes32 blockHash = blockhash(_blockNumber);
         require(blockHash != bytes32(0), "Block root unavailable!");
@@ -163,8 +168,7 @@ contract BETH is ERC20, ReentrancyGuard {
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
 
         if (_proverFee != 0) {
-            _mint(address(this), _proverFee);
-            require(this.transfer(_prover, balanceOf(address(this))), "PTF");
+            _mint(_prover, _proverFee);
         }
 
         if (_broadcasterFee != 0) {
@@ -181,8 +185,8 @@ contract BETH is ERC20, ReentrancyGuard {
 
         nullifiers[_nullifier] = true;
 
-        coins[_remainingCoin] = _remainingCoin; // The source-coin of a fresh coin is itself
-        revealed[_remainingCoin] = _revealedAmount;
+        coinSource[_remainingCoin] = _remainingCoin; // The source-coin of a fresh coin is itself
+        coinReveled[_remainingCoin] = _revealedAmount;
     }
 
     /**
@@ -212,10 +216,10 @@ contract BETH is ERC20, ReentrancyGuard {
         uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
         require(_broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
-        uint256 rootCoin = coins[_coin];
+        uint256 rootCoin = coinSource[_coin];
         uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_broadcasterFee, _receiver))) >> 8;
         require(rootCoin != 0, "Coin does not exist");
-        require(coins[_remainingCoin] == 0, "Remaining coin already exists");
+        require(coinSource[_remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
             uint256(keccak256(abi.encodePacked(_coin, _revealedAmount, _remainingCoin, extraCommitment))) >> 8;
         require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
@@ -224,9 +228,9 @@ contract BETH is ERC20, ReentrancyGuard {
 
         mintForRewardPool(poolFee);
 
-        coins[_coin] = 0;
-        coins[_remainingCoin] = rootCoin;
-        revealed[rootCoin] += _revealedAmount;
-        require(revealed[rootCoin] <= MINT_CAP, "Mint is capped!");
+        coinSource[_coin] = 0;
+        coinSource[_remainingCoin] = rootCoin;
+        coinReveled[rootCoin] += _revealedAmount;
+        require(coinReveled[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
