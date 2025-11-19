@@ -19,7 +19,7 @@ contract BETH is ERC20, ReentrancyGuard {
     IVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
     mapping(uint256 => uint256) public coinSource; // Map each coin to its root coin
-    mapping(uint256 => uint256) public coinReveled; // Total revealed amount of a root coin
+    mapping(uint256 => uint256) public coinRevealed; // Total revealed amount of a root coin
 
     constructor(
         IVerifier _proofOfBurnVerifier,
@@ -199,7 +199,7 @@ contract BETH is ERC20, ReentrancyGuard {
         nullifiers[_nullifier] = true;
 
         coinSource[_remainingCoin] = _remainingCoin; // The source-coin of a fresh coin is itself
-        coinReveled[_remainingCoin] = _revealedAmount;
+        coinRevealed[_remainingCoin] = _revealedAmount;
     }
 
     /**
@@ -241,7 +241,7 @@ contract BETH is ERC20, ReentrancyGuard {
 
         coinSource[_coin] = 0;
         coinSource[_remainingCoin] = rootCoin;
-        coinReveled[rootCoin] += _revealedAmount;
-        require(coinReveled[rootCoin] <= MINT_CAP, "Mint is capped!");
+        coinRevealed[rootCoin] += _revealedAmount;
+        require(coinRevealed[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
