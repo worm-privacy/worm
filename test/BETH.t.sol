@@ -18,21 +18,56 @@ contract AlwaysVerify is IVerifier {
     }
 }
 
+interface IUniswapV3Pool {
+    function swap(
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes calldata data
+    ) external returns (int256 amount0, int256 amount1);
+}
+
+contract FakePool is IUniswapV3Pool {
+    function swap(
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes calldata data
+    ) external returns (int256 amount0, int256 amount1) {
+        console.log(recipient);
+        console.log(zeroForOne);
+        console.log(amountSpecified);
+        console.log(sqrtPriceLimitX96);
+        amount0 = 0;
+        amount1 = 0;
+    }
+}
+
 contract BETHTest is Test {
     BETH public beth;
     WORM public worm;
     Staking public rewardPool;
     address alice = address(0xa11ce);
     address bob = address(0xb0b);
+    IUniswapV3Pool fakePool;
 
     function setUp() public {
         beth = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0);
         worm = new WORM(beth, alice, 10 ether);
         rewardPool = new Staking(worm, beth);
         beth.initRewardPool(rewardPool);
+        fakePool = new FakePool();
     }
 
     function test_mint() public {
+        bytes memory receiverHook = abi.encode(
+            address(fakePool),
+            0.01 ether,
+            abi.encodeWithSelector(IUniswapV3Pool.swap.selector, alice, false, 0.01 ether, 0, new bytes(0))
+        );
+
         assertEq(worm.balanceOf(alice), 10 ether);
         beth.mintCoin(
             [uint256(0), uint256(0)],
@@ -46,7 +81,7 @@ contract BETHTest is Test {
             alice,
             0.2 ether,
             bob,
-            new bytes(0),
+            receiverHook,
             new bytes(0)
         );
         assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));

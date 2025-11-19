@@ -52,10 +52,9 @@ contract BETH is ERC20, ReentrancyGuard {
      * @notice Handles optional post-mint hooks for BETH recipients
      * @dev Executes arbitrary calldata against a target contract with temporary token approval.
      *      Failure does not revert the main mint; only emits an event.
-     * @param _bethOwner The address whose BETH is approved for the hook
      * @param _hookData ABI-encoded (target address, allowance, calldata)
      */
-    function handleHook(address _bethOwner, bytes memory _hookData) internal {
+    function handleHook(bytes memory _hookData) internal {
         // Hooks are optional
         if (_hookData.length != 0) {
             // Decode the hook parameters
@@ -63,14 +62,14 @@ contract BETH is ERC20, ReentrancyGuard {
                 abi.decode(_hookData, (address, uint256, bytes));
 
             // Approve the hook to spend BETH
-            _approve(_bethOwner, hookAddress, hookAllowance);
+            this.approve(hookAddress, hookAllowance);
 
             // Execute the hook
             require(hookAddress.code.length > 0, "Target is not a contract");
             (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
 
             // Reset approval to zero for safety
-            _approve(_bethOwner, hookAddress, 0);
+            this.approve(hookAddress, 0);
 
             // No need to force `success` to be true. Failure should not prevent the burner from receiving their BETH.
             if (!success) {
@@ -162,16 +161,21 @@ contract BETH is ERC20, ReentrancyGuard {
                     )
                 ) >> 8;
         require(proofOfBurnVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-        if (_broadcasterFee != 0) {
-            _mint(msg.sender, _broadcasterFee);
-        }
-        if (_proverFee != 0) {
-            _mint(_prover, _proverFee);
-        }
-        _mint(_revealedAmountReceiver, revealedAmountAfterFee - _broadcasterFee - _proverFee);
 
-        handleHook(_revealedAmountReceiver, _receiverPostMintHook);
-        handleHook(msg.sender, _broadcasterFeePostMintHook);
+        if (_proverFee != 0) {
+            _mint(address(this), _proverFee);
+            require(this.transfer(_prover, balanceOf(address(this))), "PTF");
+        }
+
+        if (_broadcasterFee != 0) {
+            _mint(address(this), _broadcasterFee);
+            handleHook(_broadcasterFeePostMintHook);
+            require(this.transfer(msg.sender, balanceOf(address(this))), "BTF");
+        }
+
+        _mint(address(this), revealedAmountAfterFee - _broadcasterFee - _proverFee);
+        handleHook(_receiverPostMintHook);
+        require(this.transfer(_revealedAmountReceiver, balanceOf(address(this))), "RTF");
 
         mintForRewardPool(poolFee);
 
