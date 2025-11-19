@@ -115,14 +115,16 @@ contract BETHTest is Test {
             })
         );
         beth.spendCoin(
-            [uint256(0), uint256(0)],
-            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
-            [uint256(0), uint256(0)],
-            234,
-            1 ether,
-            456,
-            0.23 ether,
-            bob
+            BETH.SpendParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                coin: 234,
+                revealedAmount: 1 ether,
+                remainingCoin: 456,
+                broadcasterFee: 0.23 ether,
+                receiver: bob
+            })
         );
         assertEq(beth.totalSupply(), 1 ether + 1 ether);
         assertEq(beth.balanceOf(address(this)), 0.33 ether);

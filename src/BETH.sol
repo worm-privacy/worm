@@ -227,46 +227,60 @@ contract BETH is ERC20, ReentrancyGuard {
         coinRevealed[_mintParams.remainingCoin] = _mintParams.revealedAmount;
     }
 
+    /*
+     * pA zkSNARK proof element A.
+     * pB zkSNARK proof element B.
+     * pC zkSNARK proof element C.
+     * coin The encrypted coin being spent.
+     * revealedAmount The amount being revealed/minted to the receiver.
+     * remainingCoin The new encrypted coin for the remaining balance.
+     * broadcasterFee Fee paid to the transaction sender.
+     * receiver The address receiving the revealed amount.
+     */
+    struct SpendParams {
+        uint256[2] pA;
+        uint256[2][2] pB;
+        uint256[2] pC;
+        uint256 coin;
+        uint256 revealedAmount;
+        uint256 remainingCoin;
+        uint256 broadcasterFee;
+        address receiver;
+    }
+
     /**
      * @notice Reveals part of an existing BETH "coin" using a zero-knowledge proof.
-     * @param _pA zkSNARK proof element A.
-     * @param _pB zkSNARK proof element B.
-     * @param _pC zkSNARK proof element C.
-     * @param _coin The encrypted coin being spent.
-     * @param _revealedAmount The amount being revealed/minted to the receiver.
-     * @param _remainingCoin The new encrypted coin for the remaining balance.
-     * @param _broadcasterFee Fee paid to the transaction sender.
-     * @param _receiver The address receiving the revealed amount.
+     * @param _spendParams All parameters within a struct
      */
-    function spendCoin(
-        uint256[2] calldata _pA,
-        uint256[2][2] calldata _pB,
-        uint256[2] calldata _pC,
-        uint256 _coin,
-        uint256 _revealedAmount,
-        uint256 _remainingCoin,
-        uint256 _broadcasterFee,
-        address _receiver
-    ) public isInitialized {
-        uint256 poolFee = _revealedAmount / POOL_SHARE_INV; // 0.5%
-        uint256 revealedAmountAfterFee = _revealedAmount - poolFee;
-        require(_broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
+    function spendCoin(SpendParams calldata _spendParams) public isInitialized {
+        uint256 poolFee = _spendParams.revealedAmount / POOL_SHARE_INV; // 0.5%
+        uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
+        require(_spendParams.broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
-        uint256 rootCoin = coinSource[_coin];
-        uint256 extraCommitment = uint256(keccak256(abi.encodePacked(_broadcasterFee, _receiver))) >> 8;
+        uint256 rootCoin = coinSource[_spendParams.coin];
+        uint256 extraCommitment =
+            uint256(keccak256(abi.encodePacked(_spendParams.broadcasterFee, _spendParams.receiver))) >> 8;
         require(rootCoin != 0, "Coin does not exist");
-        require(coinSource[_remainingCoin] == 0, "Remaining coin already exists");
+        require(coinSource[_spendParams.remainingCoin] == 0, "Remaining coin already exists");
         uint256 commitment =
-            uint256(keccak256(abi.encodePacked(_coin, _revealedAmount, _remainingCoin, extraCommitment))) >> 8;
-        require(spendVerifier.verifyProof(_pA, _pB, _pC, [commitment]), "Invalid proof!");
-        _mint(msg.sender, _broadcasterFee);
-        _mint(_receiver, revealedAmountAfterFee - _broadcasterFee);
+            uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            _spendParams.coin, _spendParams.revealedAmount, _spendParams.remainingCoin, extraCommitment
+                        )
+                    )
+                ) >> 8;
+        require(
+            spendVerifier.verifyProof(_spendParams.pA, _spendParams.pB, _spendParams.pC, [commitment]), "Invalid proof!"
+        );
+        _mint(msg.sender, _spendParams.broadcasterFee);
+        _mint(_spendParams.receiver, revealedAmountAfterFee - _spendParams.broadcasterFee);
 
         mintForRewardPool(poolFee);
 
-        coinSource[_coin] = 0;
-        coinSource[_remainingCoin] = rootCoin;
-        coinRevealed[rootCoin] += _revealedAmount;
+        coinSource[_spendParams.coin] = 0;
+        coinSource[_spendParams.remainingCoin] = rootCoin;
+        coinRevealed[rootCoin] += _spendParams.revealedAmount;
         require(coinRevealed[rootCoin] <= MINT_CAP, "Mint is capped!");
     }
 }
