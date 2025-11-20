@@ -9,6 +9,11 @@ interface IRewardPool {
 }
 
 contract Staking is IRewardPool {
+    event RewardDeposited(address indexed depositor, uint256 epoch, uint256 amount);
+    event Staked(address indexed user, uint256 indexed stakeId, uint256 amount, uint256 startingEpoch, uint256 releaseEpoch, uint256 numEpochs);
+    event Released(address indexed user, uint256 indexed stakeId, uint256 amount);
+    event RewardClaimed(address indexed user, uint256 fromEpoch, uint256 count, uint256 totalReward);
+
     uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
     using SafeERC20 for IERC20;
@@ -89,7 +94,9 @@ contract Staking is IRewardPool {
 
     function depositReward(uint256 _amount) external {
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
-        epochRewards[currentEpoch()] += _amount;
+        uint256 epoch = currentEpoch();
+        epochRewards[epoch] += _amount;
+        emit RewardDeposited(msg.sender, epoch, _amount);
     }
 
     function lock(uint256 _amount, uint256 _numEpochs) external {
@@ -100,6 +107,7 @@ contract Staking is IRewardPool {
             userStakings[i][msg.sender] += _amount;
             totalStakings[i] += _amount;
         }
+        uint256 stakeId = stakeInfos.length;
         stakeInfos.push(
             StakeInfo({
                 owner: msg.sender,
@@ -109,6 +117,7 @@ contract Staking is IRewardPool {
                 released: false
             })
         );
+        emit Staked(msg.sender, stakeId, _amount, startingEpoch, startingEpoch + _numEpochs, _numEpochs);
     }
 
     function release(uint256 _stakeId) external {
@@ -118,6 +127,7 @@ contract Staking is IRewardPool {
         require(currentEpoch() >= inf.releaseEpoch, "Stake is locked!");
         stakingToken.safeTransfer(inf.owner, inf.amount);
         inf.released = true;
+        emit Released(inf.owner, _stakeId, inf.amount);
     }
 
     function claimReward(uint256 _fromEpoch, uint256 _count) external {
@@ -130,5 +140,6 @@ contract Staking is IRewardPool {
             }
         }
         rewardToken.safeTransfer(msg.sender, totalReward);
+        emit RewardClaimed(msg.sender, _fromEpoch, _count, totalReward);
     }
 }
