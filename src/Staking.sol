@@ -14,9 +14,10 @@ contract Staking is IRewardPool {
     event Released(address indexed user, uint256 indexed stakeId, uint256 amount);
     event RewardClaimed(address indexed user, uint256 fromEpoch, uint256 count, uint256 totalReward);
 
-    uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
-
     using SafeERC20 for IERC20;
+
+    uint256 constant EPOCH_DURATION = 7 days;
+    uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
     struct StakeInfo {
         address owner;
@@ -26,28 +27,23 @@ contract Staking is IRewardPool {
         bool released;
     }
 
-    uint256 constant EPOCH_DURATION = 7 days;
-
     IERC20 public stakingToken;
     IERC20 public rewardToken;
-
-    uint256 public startingTime;
-
-    mapping(uint256 => uint256) public epochRewards;
-
-    mapping(uint256 => uint256) public totalStakings;
-    mapping(uint256 => mapping(address => uint256)) public userStakings;
+    uint256 public startingTimestamp;
+    mapping(uint256 => uint256) public epochReward;
+    mapping(uint256 => uint256) public epochTotalLocked;
+    mapping(uint256 => mapping(address => uint256)) public epochUserLocked;
 
     StakeInfo[] public stakeInfos;
 
     constructor(IERC20 _stakingToken, IERC20 _rewardToken) {
         stakingToken = _stakingToken;
         rewardToken = _rewardToken;
-        startingTime = block.timestamp;
+        startingTimestamp = block.timestamp;
     }
 
     function currentEpoch() public view returns (uint256) {
-        return (block.timestamp - startingTime) / EPOCH_DURATION;
+        return (block.timestamp - startingTimestamp) / EPOCH_DURATION;
     }
 
     struct Info {
@@ -73,14 +69,14 @@ contract Staking is IRewardPool {
             since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
             count = 1 + 2 * DEFAULT_INFO_MARGIN;
         }
-        uint256 epochRemainingTime = block.timestamp - startingTime - currentEpoch() * EPOCH_DURATION;
+        uint256 epochRemainingTime = block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION;
         uint256[] memory rewards = new uint256[](count);
         uint256[] memory userLocks = new uint256[](count);
         uint256[] memory totalLocks = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
-            userLocks[i] = userStakings[i + since][user];
-            totalLocks[i] = totalStakings[i + since];
-            rewards[i] = epochRewards[i + since];
+            userLocks[i] = epochUserLocked[i + since][user];
+            totalLocks[i] = epochTotalLocked[i + since];
+            rewards[i] = epochReward[i + since];
         }
         return Info({
             currentEpoch: currentEpoch(),
@@ -95,7 +91,7 @@ contract Staking is IRewardPool {
     function depositReward(uint256 _amount) external {
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 epoch = currentEpoch();
-        epochRewards[epoch] += _amount;
+        epochReward[epoch] += _amount;
         emit RewardDeposited(msg.sender, epoch, _amount);
     }
 
@@ -104,8 +100,8 @@ contract Staking is IRewardPool {
         uint256 startingEpoch = currentEpoch() + 1;
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         for (uint256 i = startingEpoch; i < startingEpoch + _numEpochs; i++) {
-            userStakings[i][msg.sender] += _amount;
-            totalStakings[i] += _amount;
+            epochUserLocked[i][msg.sender] += _amount;
+            epochTotalLocked[i] += _amount;
         }
         uint256 stakeId = stakeInfos.length;
         stakeInfos.push(
@@ -134,9 +130,9 @@ contract Staking is IRewardPool {
         require(currentEpoch() >= _fromEpoch + _count, "Cannot claim ongoing epoch!");
         uint256 totalReward = 0;
         for (uint256 i = _fromEpoch; i < _fromEpoch + _count; i++) {
-            if (totalStakings[i] > 0) {
-                totalReward += epochRewards[i] * userStakings[i][msg.sender] / totalStakings[i];
-                userStakings[i][msg.sender] = 0;
+            if (epochTotalLocked[i] > 0) {
+                totalReward += epochReward[i] * epochUserLocked[i][msg.sender] / epochTotalLocked[i];
+                epochUserLocked[i][msg.sender] = 0;
             }
         }
         rewardToken.safeTransfer(msg.sender, totalReward);
