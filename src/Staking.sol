@@ -28,7 +28,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
     /// @notice Represents a user's locked stake.
-    struct StakeInfo {
+    struct Stake {
         address owner; // Address that owns the stake
         uint256 amount; // Amount of tokens staked
         uint256 startingEpoch; // Epoch when staking becomes active
@@ -43,7 +43,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     mapping(uint256 => uint256) public epochTotalLocked;
     mapping(uint256 => mapping(address => uint256)) public epochUserLocked;
 
-    StakeInfo[] public stakeInfos;
+    Stake[] public stakes;
 
     constructor(IERC20 _stakingToken, IERC20 _rewardToken) {
         stakingToken = _stakingToken;
@@ -58,7 +58,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     }
 
     /// @notice Aggregated epoch, lock, and reward information returned by `info()`.
-    struct Info {
+    struct EpochStats {
         uint256 currentEpoch; // Current epoch number
         uint256 epochRemainingTime; // Seconds left in the current epoch
         uint256 since; // Starting epoch index for data arrays
@@ -75,7 +75,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
      * @param count The number of epochs to fetch.
      * @return An `Info` struct containing epoch stats.
      */
-    function info(address user, uint256 since, uint256 count) public view returns (Info memory) {
+    function info(address user, uint256 since, uint256 count) public view returns (EpochStats memory) {
         if (since == 0 && count == 0) {
             uint256 epoch = currentEpoch();
             since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
@@ -90,7 +90,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
             totalLocks[i] = epochTotalLocked[i + since];
             rewards[i] = epochReward[i + since];
         }
-        return Info({
+        return EpochStats({
             currentEpoch: currentEpoch(),
             since: since,
             epochRemainingTime: epochRemainingTime,
@@ -124,9 +124,9 @@ contract Staking is IRewardPool, ReentrancyGuard {
             epochUserLocked[i][msg.sender] += _amount;
             epochTotalLocked[i] += _amount;
         }
-        uint256 stakeId = stakeInfos.length;
-        stakeInfos.push(
-            StakeInfo({
+        uint256 stakeId = stakes.length;
+        stakes.push(
+            Stake({
                 owner: msg.sender,
                 amount: _amount,
                 startingEpoch: startingEpoch,
@@ -142,13 +142,13 @@ contract Staking is IRewardPool, ReentrancyGuard {
      * @param _stakeId The ID of the stake to release.
      */
     function release(uint256 _stakeId) external nonReentrant {
-        StakeInfo storage inf = stakeInfos[_stakeId];
-        require(inf.amount != 0, "StakeInfo unavailable");
-        require(!inf.released, "Already released!");
-        require(currentEpoch() >= inf.releaseEpoch, "Stake is locked!");
-        inf.released = true;
-        stakingToken.safeTransfer(inf.owner, inf.amount);
-        emit Released(inf.owner, _stakeId, inf.amount);
+        Stake storage stake = stakes[_stakeId];
+        require(stake.amount != 0, "StakeInfo unavailable");
+        require(!stake.released, "Already released!");
+        require(currentEpoch() >= stake.releaseEpoch, "Stake is locked!");
+        stake.released = true;
+        stakingToken.safeTransfer(stake.owner, stake.amount);
+        emit Released(stake.owner, _stakeId, stake.amount);
     }
 
     /**
