@@ -3,14 +3,22 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface IRewardPool {
     function depositReward(uint256 _amount) external;
 }
 
-contract Staking is IRewardPool {
+contract Staking is IRewardPool, ReentrancyGuard {
     event RewardDeposited(address indexed depositor, uint256 epoch, uint256 amount);
-    event Staked(address indexed user, uint256 indexed stakeId, uint256 amount, uint256 startingEpoch, uint256 releaseEpoch, uint256 numEpochs);
+    event Staked(
+        address indexed user,
+        uint256 indexed stakeId,
+        uint256 amount,
+        uint256 startingEpoch,
+        uint256 releaseEpoch,
+        uint256 numEpochs
+    );
     event Released(address indexed user, uint256 indexed stakeId, uint256 amount);
     event RewardClaimed(address indexed user, uint256 fromEpoch, uint256 count, uint256 totalReward);
 
@@ -21,11 +29,11 @@ contract Staking is IRewardPool {
 
     /// @notice Represents a user's locked stake.
     struct StakeInfo {
-        address owner;         // Address that owns the stake
-        uint256 amount;        // Amount of tokens staked
+        address owner; // Address that owns the stake
+        uint256 amount; // Amount of tokens staked
         uint256 startingEpoch; // Epoch when staking becomes active
-        uint256 releaseEpoch;  // Epoch when tokens can be released
-        bool released;         // Whether the stake has already been released
+        uint256 releaseEpoch; // Epoch when tokens can be released
+        bool released; // Whether the stake has already been released
     }
 
     IERC20 public stakingToken;
@@ -43,7 +51,6 @@ contract Staking is IRewardPool {
         startingTimestamp = block.timestamp;
     }
 
-
     /// @notice Returns the current epoch index based on time since deployment.
     /// @return The zero-based epoch number.
     function currentEpoch() public view returns (uint256) {
@@ -52,12 +59,12 @@ contract Staking is IRewardPool {
 
     /// @notice Aggregated epoch, lock, and reward information returned by `info()`.
     struct Info {
-        uint256 currentEpoch;       // Current epoch number
+        uint256 currentEpoch; // Current epoch number
         uint256 epochRemainingTime; // Seconds left in the current epoch
-        uint256 since;              // Starting epoch index for data arrays
-        uint256[] userLocks;        // User's locked amounts per epoch
-        uint256[] totalLocks;       // Total locked amounts per epoch
-        uint256[] rewards;          // Reward amounts per epoch
+        uint256 since; // Starting epoch index for data arrays
+        uint256[] userLocks; // User's locked amounts per epoch
+        uint256[] totalLocks; // Total locked amounts per epoch
+        uint256[] rewards; // Reward amounts per epoch
     }
 
     /**
@@ -96,7 +103,7 @@ contract Staking is IRewardPool {
     /// @notice Deposits reward tokens to be distributed for the current epoch.
     /// @dev The caller must approve the contract before calling.
     /// @param _amount Amount of reward tokens to deposit.
-    function depositReward(uint256 _amount) external {
+    function depositReward(uint256 _amount) external nonReentrant {
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 epoch = currentEpoch();
         epochReward[epoch] += _amount;
@@ -109,7 +116,7 @@ contract Staking is IRewardPool {
      * @param _amount The number of tokens to lock.
      * @param _numEpochs Number of epochs the tokens will remain locked.
      */
-    function lock(uint256 _amount, uint256 _numEpochs) external {
+    function lock(uint256 _amount, uint256 _numEpochs) external nonReentrant {
         require(_amount > 0, "No amount specified!");
         uint256 startingEpoch = currentEpoch() + 1;
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -134,7 +141,7 @@ contract Staking is IRewardPool {
      * @notice Releases a user's staked tokens after the lock period ends.
      * @param _stakeId The ID of the stake to release.
      */
-    function release(uint256 _stakeId) external {
+    function release(uint256 _stakeId) external nonReentrant {
         StakeInfo storage inf = stakeInfos[_stakeId];
         require(inf.amount != 0, "StakeInfo unavailable");
         require(!inf.released, "Already released!");
@@ -150,7 +157,7 @@ contract Staking is IRewardPool {
      * @param _fromEpoch First epoch to claim rewards from.
      * @param _count Number of epochs to claim.
      */
-    function claimReward(uint256 _fromEpoch, uint256 _count) external {
+    function claimReward(uint256 _fromEpoch, uint256 _count) external nonReentrant {
         require(currentEpoch() >= _fromEpoch + _count, "Cannot claim ongoing epoch!");
         uint256 totalReward = 0;
         for (uint256 i = _fromEpoch; i < _fromEpoch + _count; i++) {
