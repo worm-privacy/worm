@@ -98,6 +98,14 @@ contract BETH is ERC20, ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice Mints BETH to this contract, optionally executes a post-mint hook,
+     *         then transfers the entire contract balance of freshly minted tokens
+     *         to the final destination.
+     * @param _destination  Final address receiving the leftover minted tokens.
+     * @param _amount       Amount of tokens to mint before executing the hook.
+     * @param _hookData     Encoded hook call data; empty means "no hook".
+     */
     function mintAndTransfer(address _destination, uint256 _amount, bytes memory _hookData) internal {
         if (_amount > 0) {
             _mint(address(this), _amount);
@@ -252,7 +260,7 @@ contract BETH is ERC20, ReentrancyGuard {
      * @notice Reveals part of an existing BETH "coin" using a zero-knowledge proof.
      * @param _spendParams All parameters within a struct
      */
-    function spendCoin(SpendParams calldata _spendParams) public isInitialized {
+    function spendCoin(SpendParams calldata _spendParams) public isInitialized nonReentrant {
         uint256 poolFee = _spendParams.revealedAmount / POOL_SHARE_INV; // 0.5%
         uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
         require(_spendParams.broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
