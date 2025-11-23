@@ -70,19 +70,22 @@ contract BETHTest is Test {
 
         assertEq(worm.balanceOf(alice), 10 ether);
         beth.mintCoin(
-            [uint256(0), uint256(0)],
-            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
-            [uint256(0), uint256(0)],
-            block.number - 1,
-            123,
-            234,
-            0.1 ether,
-            1 ether,
-            alice,
-            0.2 ether,
-            bob,
-            receiverHook,
-            new bytes(0)
+            BETH.MintParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                blockNumber: block.number - 1,
+                nullifier: 123,
+                remainingCoin: 234,
+                broadcasterFee: 0.1 ether,
+                revealedAmount: 1 ether,
+                revealedAmountReceiver: alice,
+                proverFee: 0.2 ether,
+                prover: bob,
+                receiverPostMintHook: receiverHook,
+                broadcasterFeePostMintHook: new bytes(0),
+                proverFeePostMintHook: new bytes(0)
+            })
         );
         assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));
         assertEq(beth.totalSupply(), 1 ether);
@@ -94,29 +97,34 @@ contract BETHTest is Test {
     function test_spend() public {
         assertEq(worm.balanceOf(alice), 10 ether);
         beth.mintCoin(
-            [uint256(0), uint256(0)],
-            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
-            [uint256(0), uint256(0)],
-            block.number - 1,
-            123,
-            234,
-            0.1 ether,
-            1 ether,
-            alice,
-            0.2 ether,
-            bob,
-            new bytes(0),
-            new bytes(0)
+            BETH.MintParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                blockNumber: block.number - 1,
+                nullifier: 123,
+                remainingCoin: 234,
+                broadcasterFee: 0.1 ether,
+                revealedAmount: 1 ether,
+                revealedAmountReceiver: alice,
+                proverFee: 0.2 ether,
+                prover: bob,
+                receiverPostMintHook: new bytes(0),
+                broadcasterFeePostMintHook: new bytes(0),
+                proverFeePostMintHook: new bytes(0)
+            })
         );
         beth.spendCoin(
-            [uint256(0), uint256(0)],
-            [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
-            [uint256(0), uint256(0)],
-            234,
-            1 ether,
-            456,
-            0.23 ether,
-            bob
+            BETH.SpendParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                coin: 234,
+                revealedAmount: 1 ether,
+                remainingCoin: 456,
+                broadcasterFee: 0.23 ether,
+                receiver: bob
+            })
         );
         assertEq(beth.totalSupply(), 1 ether + 1 ether);
         assertEq(beth.balanceOf(address(this)), 0.33 ether);
