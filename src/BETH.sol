@@ -2,11 +2,12 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IRewardPool} from "./Staking.sol";
 import {IVerifier} from "./IVerifier.sol";
 
-contract BETH is ERC20, ReentrancyGuard {
+contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     event HookFailure(bytes returnData);
 
     uint256 public constant MINT_CAP = 10 ether;
@@ -26,7 +27,7 @@ contract BETH is ERC20, ReentrancyGuard {
         IVerifier _spendVerifier,
         address _premineAddress,
         uint256 _premineAmount
-    ) ERC20("Burned ETH", "BETH") {
+    ) ERC20("Burned ETH", "BETH") ERC20Permit("Burned ETH") {
         proofOfBurnVerifier = _proofOfBurnVerifier;
         spendVerifier = _spendVerifier;
         initializer = msg.sender;

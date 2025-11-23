@@ -2,8 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-contract WORM is ERC20 {
+contract WORM is ERC20, ERC20Permit {
     event Participated(address indexed participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
     event Claimed(address indexed claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
 
@@ -29,7 +30,10 @@ contract WORM is ERC20 {
      * @param _premineAddress The address to receive the initial premine.
      * @param _premineAmount The amount of WORM tokens to premine.
      */
-    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount) ERC20("WORM", "WORM") {
+    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount)
+        ERC20("WORM", "WORM")
+        ERC20Permit("WORM")
+    {
         bethContract = _bethContract;
         startingTimestamp = block.timestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
