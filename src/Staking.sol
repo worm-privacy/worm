@@ -139,8 +139,8 @@ contract Staking is IRewardPool {
         require(inf.amount != 0, "StakeInfo unavailable");
         require(!inf.released, "Already released!");
         require(currentEpoch() >= inf.releaseEpoch, "Stake is locked!");
-        stakingToken.safeTransfer(inf.owner, inf.amount);
         inf.released = true;
+        stakingToken.safeTransfer(inf.owner, inf.amount);
         emit Released(inf.owner, _stakeId, inf.amount);
     }
 
