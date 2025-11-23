@@ -219,6 +219,11 @@ contract BETH is ERC20, ReentrancyGuard {
             "Invalid proof!"
         );
 
+        nullifiers[_mintParams.nullifier] = true;
+        coinSource[_mintParams.remainingCoin] = _mintParams.remainingCoin; // The source-coin of a fresh coin is itself
+        coinRevealed[_mintParams.remainingCoin] = _mintParams.revealedAmount;
+
+        // STATE CHANGES
         mintAndTransfer(_mintParams.prover, _mintParams.proverFee, _mintParams.proverFeePostMintHook);
         mintAndTransfer(msg.sender, _mintParams.broadcasterFee, _mintParams.broadcasterFeePostMintHook);
         mintAndTransfer(
@@ -226,13 +231,7 @@ contract BETH is ERC20, ReentrancyGuard {
             revealedAmountAfterFee - _mintParams.broadcasterFee - _mintParams.proverFee,
             _mintParams.receiverPostMintHook
         );
-
         mintForRewardPool(poolFee);
-
-        nullifiers[_mintParams.nullifier] = true;
-
-        coinSource[_mintParams.remainingCoin] = _mintParams.remainingCoin; // The source-coin of a fresh coin is itself
-        coinRevealed[_mintParams.remainingCoin] = _mintParams.revealedAmount;
     }
 
     /*
@@ -281,14 +280,15 @@ contract BETH is ERC20, ReentrancyGuard {
         require(
             spendVerifier.verifyProof(_spendParams.pA, _spendParams.pB, _spendParams.pC, [commitment]), "Invalid proof!"
         );
-        _mint(msg.sender, _spendParams.broadcasterFee);
-        _mint(_spendParams.receiver, revealedAmountAfterFee - _spendParams.broadcasterFee);
-
-        mintForRewardPool(poolFee);
 
         coinSource[_spendParams.coin] = 0;
         coinSource[_spendParams.remainingCoin] = rootCoin;
         coinRevealed[rootCoin] += _spendParams.revealedAmount;
         require(coinRevealed[rootCoin] <= MINT_CAP, "Mint is capped!");
+
+        // STATE CHANGES
+        _mint(msg.sender, _spendParams.broadcasterFee);
+        _mint(_spendParams.receiver, revealedAmountAfterFee - _spendParams.broadcasterFee);
+        mintForRewardPool(poolFee);
     }
 }
