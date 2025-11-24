@@ -4,10 +4,11 @@ pragma solidity ^0.8.13;
 import {Script, console} from "forge-std/Script.sol";
 import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
-import {Staking, IRewardPool} from "../src/Staking.sol";
+import {Staking} from "../src/Staking.sol";
 import {ProofOfBurnVerifier} from "../src/ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "../src/SpendVerifier.sol";
 import {IVerifier} from "../src/IVerifier.sol";
+import {IRewardPool} from "../src/IRewardPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FakePool {

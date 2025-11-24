@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IRewardPool} from "./Staking.sol";
 import {IVerifier} from "./IVerifier.sol";
+import {IRewardPool} from "./IRewardPool.sol";
 
 contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     event HookFailure(bytes returnData);
