@@ -12,6 +12,8 @@ contract Genesis is ReentrancyGuard {
     using MessageHashUtils for bytes32;
     using SafeERC20 for IERC20;
 
+    bool public locked;
+
     /// @notice Address authorized to sign valid Share objects.
     address public master;
 
@@ -93,15 +95,16 @@ contract Genesis is ReentrancyGuard {
      * @notice Reveals a new share by master.
      * @param _shares A list of shares to be added
      */
-    function reveal(Share[] calldata _shares) external {
+    function revealAndLock(Share[] calldata _shares) external {
+        require(!locked, "Locked!");
         require(msg.sender == master, "Not master!");
-
         for (uint256 i = 0; i < _shares.length; i++) {
             Share calldata share = _shares[i];
             require(!shareRevealed[share.id], "Share already revealed!");
             shares[share.id] = share;
             shareRevealed[share.id] = true;
         }
+        locked = true;
     }
 
     /**
@@ -110,6 +113,7 @@ contract Genesis is ReentrancyGuard {
      * @param _signature  Master signature for this Share.
      */
     function revealWithSignature(Share calldata _share, bytes calldata _signature) external {
+        require(!locked, "Locked!");
         require(!shareRevealed[_share.id], "Share already revealed!");
 
         bytes memory abiShare = abi.encode(_share);

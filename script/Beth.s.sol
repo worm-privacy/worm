@@ -91,7 +91,7 @@ contract BETHScript is Script {
             linearEmission: Genesis.LinearEmission(0, 0, 0),
             totalCap: 0 ether
         });
-        othersGenesis.reveal(shares);
+        othersGenesis.revealAndLock(shares);
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
