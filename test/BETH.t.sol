@@ -114,6 +114,12 @@ contract BETHTest is Test {
                 proverFeePostMintHook: new bytes(0)
             })
         );
+        assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));
+        assertEq(beth.totalSupply(), 1 ether);
+        assertEq(beth.balanceOf(address(this)), 0.1 ether);
+        assertEq(beth.balanceOf(bob), 0.2 ether);
+        assertEq(beth.balanceOf(address(rewardPool)), (1 ether / 200));
+
         beth.spendCoin(
             BETH.SpendParams({
                 pA: [uint256(0), uint256(0)],
@@ -121,14 +127,16 @@ contract BETHTest is Test {
                 pC: [uint256(0), uint256(0)],
                 coin: 234,
                 revealedAmount: 1 ether,
-                remainingCoin: 456,
-                broadcasterFee: 0.23 ether,
-                receiver: bob
+                remainingCoin: 456
             })
         );
+
+        assertEq(
+            beth.balanceOf(alice), (1 ether - 0.1 ether - 0.2 ether - (1 ether / 200)) + (1 ether - (1 ether / 200))
+        );
         assertEq(beth.totalSupply(), 1 ether + 1 ether);
-        assertEq(beth.balanceOf(address(this)), 0.33 ether);
-        assertEq(beth.balanceOf(bob), 0.2 ether + 0.765 ether);
+        assertEq(beth.balanceOf(address(this)), 0.1 ether);
+        assertEq(beth.balanceOf(bob), 0.2 ether);
         assertEq(beth.balanceOf(address(rewardPool)), 2 * (1 ether / 200));
     }
 
