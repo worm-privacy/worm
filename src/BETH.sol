@@ -19,8 +19,10 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     IVerifier public proofOfBurnVerifier;
     IVerifier public spendVerifier;
     mapping(uint256 => bool) public nullifiers;
+
     mapping(uint256 => uint256) public coinSource; // Map each coin to its root coin
     mapping(uint256 => uint256) public coinRevealed; // Total revealed amount of a root coin
+    mapping(uint256 => address) public coinOwner; // Map root coins to their owners
 
     constructor(
         IVerifier _proofOfBurnVerifier,
@@ -223,6 +225,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         nullifiers[_mintParams.nullifier] = true;
         coinSource[_mintParams.remainingCoin] = _mintParams.remainingCoin; // The source-coin of a fresh coin is itself
         coinRevealed[_mintParams.remainingCoin] = _mintParams.revealedAmount;
+        coinOwner[_mintParams.remainingCoin] = _mintParams.revealedAmountReceiver;
 
         // STATE CHANGES
         mintAndTransfer(_mintParams.prover, _mintParams.proverFee, _mintParams.proverFeePostMintHook);
@@ -242,8 +245,6 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
      * coin The encrypted coin being spent.
      * revealedAmount The amount being revealed/minted to the receiver.
      * remainingCoin The new encrypted coin for the remaining balance.
-     * broadcasterFee Fee paid to the transaction sender.
-     * receiver The address receiving the revealed amount.
      */
     struct SpendParams {
         uint256[2] pA;
@@ -252,8 +253,6 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         uint256 coin;
         uint256 revealedAmount;
         uint256 remainingCoin;
-        uint256 broadcasterFee;
-        address receiver;
     }
 
     /**
@@ -263,18 +262,21 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     function spendCoin(SpendParams calldata _spendParams) public isInitialized nonReentrant {
         uint256 poolFee = _spendParams.revealedAmount / POOL_SHARE_INV; // 0.5%
         uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
-        require(_spendParams.broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
         uint256 rootCoin = coinSource[_spendParams.coin];
-        uint256 extraCommitment =
-            uint256(keccak256(abi.encodePacked(_spendParams.broadcasterFee, _spendParams.receiver))) >> 8;
+        address owner = coinOwner[_spendParams.coin];
+
         require(rootCoin != 0, "Coin does not exist");
         require(coinSource[_spendParams.remainingCoin] == 0, "Remaining coin already exists");
+
         uint256 commitment =
             uint256(
                     keccak256(
                         abi.encodePacked(
-                            _spendParams.coin, _spendParams.revealedAmount, _spendParams.remainingCoin, extraCommitment
+                            _spendParams.coin,
+                            _spendParams.revealedAmount,
+                            _spendParams.remainingCoin,
+                            uint256(0) // No extra-commitment
                         )
                     )
                 ) >> 8;
@@ -288,8 +290,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         require(coinRevealed[rootCoin] <= MINT_CAP, "Mint is capped!");
 
         // STATE CHANGES
-        _mint(msg.sender, _spendParams.broadcasterFee);
-        _mint(_spendParams.receiver, revealedAmountAfterFee - _spendParams.broadcasterFee);
+        _mint(owner, revealedAmountAfterFee);
         mintForRewardPool(poolFee);
     }
 }
