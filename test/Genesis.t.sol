@@ -24,7 +24,6 @@ contract GenesisTest is Test {
 
     Genesis genesis;
     MockToken token;
-    MockToken wrapperToken;
 
     uint256 masterKey = 0xABCD;
     address master = vm.addr(0xABCD);
@@ -34,12 +33,10 @@ contract GenesisTest is Test {
         vm.warp(123456);
 
         token = new MockToken();
-        wrapperToken = new MockToken();
-        genesis = new Genesis(master, IERC20(token), IERC20(wrapperToken));
+        genesis = new Genesis(master, IERC20(token));
 
         // Fund contract with tokens
         token.mint(address(genesis), 1_000_000 ether);
-        wrapperToken.mint(user, 100 ether);
     }
 
     function _signShare(Genesis.Share memory share, uint256 privKey) internal returns (bytes memory) {
@@ -65,7 +62,7 @@ contract GenesisTest is Test {
 
         // Cheat to set master private key
         vm.prank(master);
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
 
         // Trigger claim
         vm.prank(user);
@@ -87,7 +84,7 @@ contract GenesisTest is Test {
         bytes memory sig = _signShare(share, masterKey);
 
         vm.prank(master);
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
 
         vm.prank(user);
         genesis.trigger(2);
@@ -112,7 +109,7 @@ contract GenesisTest is Test {
         bytes memory sig = _signShare(share, masterKey);
 
         vm.prank(master);
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
 
         vm.prank(user);
         genesis.trigger(3);
@@ -132,12 +129,12 @@ contract GenesisTest is Test {
         bytes memory sig = _signShare(share, masterKey);
 
         vm.prank(master);
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
 
         // Reveal again should revert
         vm.prank(master);
         vm.expectRevert("Share already revealed!");
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
     }
 
     function testCannotClaimBeforeEmission() public {
@@ -152,28 +149,11 @@ contract GenesisTest is Test {
         bytes memory sig = _signShare(share, masterKey);
 
         vm.prank(master);
-        genesis.reveal(share, sig);
+        genesis.revealWithSignature(share, sig);
 
         // Cannot claim yet
         vm.prank(user);
         vm.expectRevert("Nothing to claim!");
         genesis.trigger(5);
-    }
-
-    function testRedeemWrapperToken() public {
-        uint256 redeemAmount = 30 ether;
-
-        // User approves Genesis contract to spend wrapperToken
-        vm.prank(user);
-        wrapperToken.approve(address(genesis), redeemAmount);
-
-        // Redeem
-        vm.prank(user);
-        genesis.redeem(redeemAmount);
-
-        // Check balances
-        assertEq(wrapperToken.balanceOf(user), 70 ether); // 100 - 30
-        assertEq(token.balanceOf(user), redeemAmount); // received 30 token
-        assertEq(wrapperToken.balanceOf(address(genesis)), redeemAmount); // Genesis holds redeemed wrapperToken
     }
 }

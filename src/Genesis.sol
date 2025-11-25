@@ -15,9 +15,6 @@ contract Genesis is ReentrancyGuard {
     /// @notice Address authorized to sign valid Share objects.
     address public master;
 
-    /// @notice 1:1 wrapper-token which can be redeemed with actual token
-    IERC20 public wrapperToken;
-
     /// @notice ERC20 token distributed by this contract.
     IERC20 public token;
 
@@ -57,10 +54,9 @@ contract Genesis is ReentrancyGuard {
     /// @notice Emitted if calculated claimable > total, indicating inconsistent share data.
     event ClaimableMoreThanTotal(uint256 shareId);
 
-    constructor(address _master, IERC20 _token, IERC20 _wrapperToken) {
+    constructor(address _master, IERC20 _token) {
         master = _master;
         token = _token;
-        wrapperToken = _wrapperToken;
     }
 
     /**
@@ -94,11 +90,26 @@ contract Genesis is ReentrancyGuard {
     }
 
     /**
+     * @notice Reveals a new share by master.
+     * @param _shares A list of shares to be added
+     */
+    function reveal(Share[] calldata _shares) external {
+        require(msg.sender == master, "Not master!");
+
+        for (uint256 i = 0; i < _shares.length; i++) {
+            Share calldata share = _shares[i];
+            require(!shareRevealed[share.id], "Share already revealed!");
+            shares[share.id] = share;
+            shareRevealed[share.id] = true;
+        }
+    }
+
+    /**
      * @notice Reveals a new share. Requires a valid signature from the master.
      * @param _share      Full Share struct (may include dynamic array).
      * @param _signature  Master signature for this Share.
      */
-    function reveal(Share calldata _share, bytes calldata _signature) external {
+    function revealWithSignature(Share calldata _share, bytes calldata _signature) external {
         require(!shareRevealed[_share.id], "Share already revealed!");
 
         bytes memory abiShare = abi.encode(_share);
@@ -132,19 +143,5 @@ contract Genesis is ReentrancyGuard {
         require(shareClaimed[_shareId] <= total, "Can't claim more than total!");
 
         token.safeTransfer(owner, amount);
-    }
-
-    /**
-     * @notice Redeem `wrapperToken` for the underlying `token` at 1:1 ratio.
-     * @param amount Amount of wrapperToken to redeem.
-     */
-    function redeem(uint256 amount) external nonReentrant {
-        require(amount > 0, "Amount must be > 0");
-
-        // Transfer wrapperToken from user to contract
-        wrapperToken.safeTransferFrom(msg.sender, address(this), amount);
-
-        // Transfer underlying token to user
-        token.safeTransfer(msg.sender, amount);
     }
 }
