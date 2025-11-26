@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
 import {IVerifier} from "../src/IVerifier.sol";
@@ -29,6 +30,12 @@ interface IUniswapV3Pool {
 }
 
 contract FakePool is IUniswapV3Pool {
+    IERC20 beth;
+
+    constructor(IERC20 _beth) {
+        beth = _beth;
+    }
+
     function swap(
         address recipient,
         bool zeroForOne,
@@ -36,12 +43,8 @@ contract FakePool is IUniswapV3Pool {
         uint160 sqrtPriceLimitX96,
         bytes calldata data
     ) external returns (int256 amount0, int256 amount1) {
-        console.log(recipient);
-        console.log(zeroForOne);
-        console.log(amountSpecified);
-        console.log(sqrtPriceLimitX96);
-        amount0 = 0;
-        amount1 = 0;
+        beth.transferFrom(msg.sender, address(this), uint256(amountSpecified));
+        recipient.call{value: uint256(amountSpecified)}("");
     }
 }
 
@@ -51,6 +54,7 @@ contract BETHTest is Test {
     Staking public rewardPool;
     address alice = address(0xa11ce);
     address bob = address(0xb0b);
+    address charlie = address(0xc4a);
     IUniswapV3Pool fakePool;
 
     function setUp() public {
@@ -58,14 +62,15 @@ contract BETHTest is Test {
         worm = new WORM(beth, alice, 10 ether);
         rewardPool = new Staking(worm, beth);
         beth.initRewardPool(rewardPool);
-        fakePool = new FakePool();
+        fakePool = new FakePool(beth);
+        vm.deal(address(fakePool), 100 ether);
     }
 
     function test_mint() public {
         bytes memory receiverHook = abi.encode(
             address(fakePool),
             0.01 ether,
-            abi.encodeWithSelector(IUniswapV3Pool.swap.selector, alice, false, 0.01 ether, 0, new bytes(0))
+            abi.encodeWithSelector(IUniswapV3Pool.swap.selector, charlie, false, 0.01 ether, 0, new bytes(0))
         );
 
         assertEq(worm.balanceOf(alice), 10 ether);
@@ -87,7 +92,10 @@ contract BETHTest is Test {
                 proverFeePostMintHook: new bytes(0)
             })
         );
-        assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - (1 ether / 200));
+        assertEq(beth.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - 0.01 ether - (1 ether / 200));
+        assertEq(beth.balanceOf(address(fakePool)), 0.01 ether);
+        assertEq(address(fakePool).balance, 99.99 ether);
+        assertEq(charlie.balance, 0.01 ether);
         assertEq(beth.totalSupply(), 1 ether);
         assertEq(beth.balanceOf(address(this)), 0.1 ether);
         assertEq(beth.balanceOf(bob), 0.2 ether);
