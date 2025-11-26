@@ -86,13 +86,13 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
                 abi.decode(_hookData, (address, uint256, bytes));
 
             // Approve the hook to spend BETH
-            this.approve(hookAddress, hookAllowance);
+            _approve(address(this), hookAddress, hookAllowance);
 
             // Execute the hook
             (bool success, bytes memory returnData) = hookAddress.call{value: 0}(hookCalldata);
 
             // Reset approval to zero for safety
-            this.approve(hookAddress, 0);
+            _approve(address(this), hookAddress, 0);
 
             // No need to force `success` to be true. Failure should not prevent the burner from receiving their BETH.
             if (!success) {
@@ -113,7 +113,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         if (_amount > 0) {
             _mint(address(this), _amount);
             handleHook(_hookData);
-            require(this.transfer(_destination, balanceOf(address(this))), "TF");
+            _transfer(address(this), _destination, balanceOf(address(this)));
         }
     }
 
