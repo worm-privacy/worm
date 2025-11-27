@@ -21,25 +21,13 @@ contract Genesis is ReentrancyGuard {
     /// @notice ERC20 token distributed by this contract.
     IERC20 public token;
 
-    struct SharpEmission {
-        uint256 startTime; // Timestamp when this one-time emission becomes claimable
-        uint256 amount; // Fixed amount that becomes instantly claimable at startTime
-    }
-
-    struct LinearEmission {
-        uint256 startTime; // Timestamp when linear emission starts accruing
-        uint256 amountPerSecond; // Number of tokens emitted per second after startTime
-        uint256 cap; // Maximum amount that can ever be emitted linearly (hard cap)
-    }
-
     struct Share {
         uint256 id; // Unique identifier for the share
         address owner; // Address that can claim this share's emissions
-
-        SharpEmission[] sharpEmissions; // List of discrete time-based emissions that unlock instantly when reached
-        LinearEmission linearEmission; // Emission that unlocks gradually over time at a fixed rate
-
-        uint256 totalCap; // Maximum total amount that can ever be claimed (sharp + linear combined)
+        uint256 startTime; // Timestamp when share starts
+        uint256 initialAmount; // Amount of token immediately released
+        uint256 amountPerSecond; // Amount of token generated per second
+        uint256 totalCap; // Maximum total amount that can ever be claimed
     }
 
     /// @notice Stores all revealed shares by ID.
@@ -72,21 +60,10 @@ contract Genesis is ReentrancyGuard {
     function calculateClaimable(uint256 _shareId) public view returns (address, uint256, uint256) {
         Share storage share = shares[_shareId];
         uint256 claimable = 0;
-
-        for (uint256 i = 0; i < share.sharpEmissions.length; i++) {
-            SharpEmission storage sharpEmission = share.sharpEmissions[i];
-            if (block.timestamp >= sharpEmission.startTime) {
-                claimable += sharpEmission.amount;
-            }
+        if (block.timestamp >= share.startTime) {
+            claimable += share.initialAmount;
+            claimable += Math.min(share.amountPerSecond * (block.timestamp - share.startTime), share.totalCap);
         }
-
-        if (block.timestamp > share.linearEmission.startTime) {
-            claimable += Math.min(
-                share.linearEmission.amountPerSecond * (block.timestamp - share.linearEmission.startTime),
-                share.linearEmission.cap
-            );
-        }
-
         return (share.owner, claimable, share.totalCap);
     }
 

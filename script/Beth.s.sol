@@ -6,6 +6,7 @@ import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
 import {Staking} from "../src/Staking.sol";
 import {Genesis} from "../src/Genesis.sol";
+import {Unwrap} from "../src/Unwrap.sol";
 import {ProofOfBurnVerifier} from "../src/ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "../src/SpendVerifier.sol";
 import {IVerifier} from "../src/IVerifier.sol";
@@ -36,62 +37,81 @@ contract BETHScript is Script {
 
     Genesis public communityGenesis;
     Genesis public othersGenesis;
+    Unwrap public unwrap;
 
     function setUp() public {}
 
-    function run(
-        address _bethPremineAddress,
-        uint256 _bethPremineAmount,
-        uint256 _wormOthersPremineAmount,
-        uint256 _wormCommunityPremineAmount,
-        address _communityGenesisMaster,
-        bool _debug
-    ) public {
+    function run() public {
         vm.startBroadcast();
 
-        IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
-        IVerifier spendVeifier = new SpendVerifier();
-
-        beth = new BETH(proofOfBurnVerifier, spendVeifier, _bethPremineAddress, _bethPremineAmount);
-        worm = new WORM(IERC20(beth), msg.sender, _wormCommunityPremineAmount + _wormOthersPremineAmount);
-        staking = new Staking(IERC20(worm), IERC20(beth));
-        beth.initRewardPool(IRewardPool(staking));
-
-        communityGenesis = new Genesis(_communityGenesisMaster, IERC20(worm));
-        worm.transfer(address(communityGenesis), _wormCommunityPremineAmount);
-
-        othersGenesis = new Genesis(msg.sender, IERC20(worm));
-        worm.transfer(address(othersGenesis), _wormOthersPremineAmount);
+        address eip7503DotEth = 0x8DC77b145d7009752D6947B3CF6D983caFA1C0Bb;
+        address wrappedWormToken = eip7503DotEth;
+        address communityGenesisMaster = eip7503DotEth;
+        address bethPremineAddress = eip7503DotEth;
+        uint256 bethPremineAmount = 0;
+        uint256 wormCommunityPremineAmount = 100 ether;
         Genesis.Share[] memory shares = new Genesis.Share[](4);
         shares[0] = Genesis.Share({
             id: 0,
-            owner: 0x000000000000000000000000000000000000dEaD,
-            sharpEmissions: new Genesis.SharpEmission[](0),
-            linearEmission: Genesis.LinearEmission(0, 0, 0),
+            owner: eip7503DotEth,
+            startTime: 0,
+            initialAmount: 0 ether,
+            amountPerSecond: 0.0001 ether,
             totalCap: 0 ether
         });
         shares[1] = Genesis.Share({
             id: 1,
-            owner: 0x000000000000000000000000000000000000dEaD,
-            sharpEmissions: new Genesis.SharpEmission[](0),
-            linearEmission: Genesis.LinearEmission(0, 0, 0),
+            owner: eip7503DotEth,
+            startTime: 0,
+            initialAmount: 0 ether,
+            amountPerSecond: 0.0001 ether,
             totalCap: 0 ether
         });
         shares[2] = Genesis.Share({
             id: 2,
-            owner: 0x000000000000000000000000000000000000dEaD,
-            sharpEmissions: new Genesis.SharpEmission[](0),
-            linearEmission: Genesis.LinearEmission(0, 0, 0),
+            owner: eip7503DotEth,
+            startTime: 0,
+            initialAmount: 0 ether,
+            amountPerSecond: 0.0001 ether,
             totalCap: 0 ether
         });
         shares[3] = Genesis.Share({
             id: 3,
-            owner: 0x000000000000000000000000000000000000dEaD,
-            sharpEmissions: new Genesis.SharpEmission[](0),
-            linearEmission: Genesis.LinearEmission(0, 0, 0),
+            owner: eip7503DotEth,
+            startTime: 0,
+            initialAmount: 0 ether,
+            amountPerSecond: 0.0001 ether,
             totalCap: 0 ether
         });
+
+        /* END OF DEPLOY CONFIG */
+
+        uint256 wormOthersPremineAmount = 0;
+        for (uint256 i = 0; i < shares.length; i++) {
+            wormOthersPremineAmount += shares[i].totalCap;
+        }
+
+        uint256 wrappedWormTokenSupply = IERC20(wrappedWormToken).totalSupply();
+
+        IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
+        IVerifier spendVeifier = new SpendVerifier();
+
+        beth = new BETH(proofOfBurnVerifier, spendVeifier, bethPremineAddress, bethPremineAmount);
+        worm = new WORM(
+            IERC20(beth), msg.sender, wormCommunityPremineAmount + wormOthersPremineAmount + wrappedWormTokenSupply
+        );
+        staking = new Staking(IERC20(worm), IERC20(beth));
+        beth.initRewardPool(IRewardPool(staking));
+
+        communityGenesis = new Genesis(communityGenesisMaster, IERC20(worm));
+        worm.transfer(address(communityGenesis), wormCommunityPremineAmount);
+
+        othersGenesis = new Genesis(msg.sender, IERC20(worm));
+        worm.transfer(address(othersGenesis), wormOthersPremineAmount);
         othersGenesis.revealAndLock(shares);
+
+        unwrap = new Unwrap(IERC20(worm), IERC20(wrappedWormToken));
+        worm.transfer(address(unwrap), wrappedWormTokenSupply);
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
