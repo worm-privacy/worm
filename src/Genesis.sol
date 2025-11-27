@@ -62,7 +62,8 @@ contract Genesis is ReentrancyGuard {
         uint256 claimable = 0;
         if (block.timestamp >= share.startTime) {
             claimable += share.initialAmount;
-            claimable += Math.min(share.amountPerSecond * (block.timestamp - share.startTime), share.totalCap);
+            claimable += share.amountPerSecond * (block.timestamp - share.startTime);
+            claimable = Math.min(claimable, share.totalCap);
         }
         return (share.owner, claimable, share.totalCap);
     }
