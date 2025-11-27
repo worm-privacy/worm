@@ -264,7 +264,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
 
         uint256 rootCoin = coinSource[_spendParams.coin];
-        address owner = coinOwner[_spendParams.coin];
+        address owner = coinOwner[rootCoin];
 
         require(rootCoin != 0, "Coin does not exist");
         require(coinSource[_spendParams.remainingCoin] == 0, "Remaining coin already exists");

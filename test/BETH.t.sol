@@ -146,6 +146,27 @@ contract BETHTest is Test {
         assertEq(beth.balanceOf(address(this)), 0.1 ether);
         assertEq(beth.balanceOf(bob), 0.2 ether);
         assertEq(beth.balanceOf(address(rewardPool)), 2 * (1 ether / 200));
+
+        beth.spendCoin(
+            BETH.SpendParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                coin: 456,
+                revealedAmount: 1 ether,
+                remainingCoin: 567
+            })
+        );
+
+        assertEq(
+            beth.balanceOf(alice),
+            (1 ether - 0.1 ether - 0.2 ether - (1 ether / 200))
+                + (1 ether - (1 ether / 200) + (1 ether - (1 ether / 200)))
+        );
+        assertEq(beth.totalSupply(), 1 ether + 1 ether + 1 ether);
+        assertEq(beth.balanceOf(address(this)), 0.1 ether);
+        assertEq(beth.balanceOf(bob), 0.2 ether);
+        assertEq(beth.balanceOf(address(rewardPool)), 3 * (1 ether / 200));
     }
 
     function test_proof_of_burn_public_commitment() public pure {
