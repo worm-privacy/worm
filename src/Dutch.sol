@@ -24,45 +24,38 @@ contract Dutch is ReentrancyGuard, Ownable {
     /// @notice Amount the price decreases per second.
     uint256 priceDecreasePerSecond;
 
-    /// @notice Minimum price the auction can reach.
-    uint256 minPrice;
-
     constructor(
         address _owner,
         IERC20 _token,
         uint256 _startTime,
         uint256 _initialPrice,
-        uint256 _priceDecreasePerSecond,
-        uint256 _minPrice
+        uint256 _priceDecreasePerSecond
     ) Ownable(_owner) {
         token = _token;
         startTime = _startTime;
         initialPrice = _initialPrice;
         priceDecreasePerSecond = _priceDecreasePerSecond;
-        minPrice = _minPrice;
     }
 
     /**
      * @notice Returns the current token price based on elapsed time.
-     *         Price decays linearly from initialPrice down to minPrice.
+     *         Price decays linearly from initialPrice down to 0.
      *         Reverts if called before the auction starts.
      */
     function currentPrice() public view returns (uint256) {
         require(block.timestamp >= startTime, "Auction has not yet begun!");
         uint256 elapsed = block.timestamp - startTime;
-        uint256 maxDecay = initialPrice - minPrice;
-        uint256 decay = Math.min(elapsed * priceDecreasePerSecond, maxDecay);
-        return initialPrice - decay;
+        return initialPrice - Math.min(elapsed * priceDecreasePerSecond, initialPrice);
     }
 
     /**
      * @notice Finalizes the auction.
-     *         - Can only be called once price has fully decayed to minPrice.
+     *         - Can only be called once price has decayed to 0.
      *         - Sends all collected ETH and remaining tokens to the owner.
      *         NOTE: Does NOT require that all tokens be sold.
      */
     function finalize() external nonReentrant {
-        require(currentPrice() == minPrice, "Auction has not yet ended!");
+        require(currentPrice() == 0, "Auction has not yet ended!");
         uint256 amount = address(this).balance;
         (bool success,) = owner().call{value: amount}("");
         require(success, "Transfer failed");
@@ -78,6 +71,7 @@ contract Dutch is ReentrancyGuard, Ownable {
      */
     function buy() external payable nonReentrant {
         uint256 price = currentPrice();
+        require(price > 0, "Price has reached zero!");
         uint256 tokensLeft = token.balanceOf(address(this));
         require(tokensLeft > 0, "No token left!");
         uint256 bought = Math.min(msg.value / price, tokensLeft);

@@ -22,7 +22,6 @@ contract DutchTest is Test {
 
     uint256 startTime;
     uint256 initialPrice = 1 ether;
-    uint256 minPrice = 0.2 ether;
     uint256 priceDecreasePerSecond = 0.1 ether;
 
     uint256 initialTokens = 1000 ether;
@@ -31,7 +30,7 @@ contract DutchTest is Test {
         token = new MockToken();
         startTime = block.timestamp + 100;
 
-        auction = new Dutch(owner, IERC20(address(token)), startTime, initialPrice, priceDecreasePerSecond, minPrice);
+        auction = new Dutch(owner, IERC20(address(token)), startTime, initialPrice, priceDecreasePerSecond);
 
         token.mint(address(auction), initialTokens);
         vm.deal(buyer, 1000 ether);
@@ -60,7 +59,7 @@ contract DutchTest is Test {
 
     function test_PriceStopsAtMinPrice() public {
         vm.warp(startTime + 1000);
-        assertEq(auction.currentPrice(), minPrice);
+        assertEq(auction.currentPrice(), 0);
     }
 
     /*//////////////////////////////////////////////////////////////
