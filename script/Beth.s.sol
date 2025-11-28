@@ -6,7 +6,7 @@ import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
 import {Staking} from "../src/Staking.sol";
 import {Genesis} from "../src/Genesis.sol";
-import {Unwrap} from "../src/Unwrap.sol";
+import {DutchAuction} from "../src/DutchAuction.sol";
 import {ProofOfBurnVerifier} from "../src/ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "../src/SpendVerifier.sol";
 import {IVerifier} from "../src/IVerifier.sol";
@@ -37,7 +37,7 @@ contract BETHScript is Script {
 
     Genesis public communityGenesis;
     Genesis public othersGenesis;
-    Unwrap public unwrap;
+    DutchAuction public auction;
 
     function setUp() public {}
 
@@ -45,10 +45,16 @@ contract BETHScript is Script {
         vm.startBroadcast();
 
         address eip7503DotEth = 0x8DC77b145d7009752D6947B3CF6D983caFA1C0Bb;
-        address wrappedWormToken = eip7503DotEth;
         address communityGenesisMaster = eip7503DotEth;
         address bethPremineAddress = eip7503DotEth;
         uint256 bethPremineAmount = 0;
+
+        uint256 wormAuctionStartTime = block.timestamp;
+        address wormAuctionOwner = eip7503DotEth;
+        uint256 wormAuctionAmount = 100 ether;
+        uint256 wormAuctionInitialPrice = 0.1 ether;
+        uint256 wormAuctionPriceDecayPerSecond = 0.000001 ether;
+
         uint256 wormCommunityPremineAmount = 100 ether;
         Genesis.Share[] memory shares = new Genesis.Share[](4);
         shares[0] = Genesis.Share({
@@ -91,17 +97,22 @@ contract BETHScript is Script {
             wormOthersPremineAmount += shares[i].totalCap;
         }
 
-        uint256 wrappedWormTokenSupply = IERC20(wrappedWormToken).totalSupply();
-
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
 
         beth = new BETH(proofOfBurnVerifier, spendVeifier, bethPremineAddress, bethPremineAmount);
         worm = new WORM(
-            IERC20(beth), msg.sender, wormCommunityPremineAmount + wormOthersPremineAmount + wrappedWormTokenSupply
+            IERC20(beth), msg.sender, wormCommunityPremineAmount + wormOthersPremineAmount + wormAuctionAmount
         );
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
+        auction = new DutchAuction(
+            wormAuctionOwner,
+            IERC20(worm),
+            wormAuctionStartTime,
+            wormAuctionInitialPrice,
+            wormAuctionPriceDecayPerSecond
+        );
 
         communityGenesis = new Genesis(communityGenesisMaster, IERC20(worm));
         worm.transfer(address(communityGenesis), wormCommunityPremineAmount);
@@ -109,9 +120,6 @@ contract BETHScript is Script {
         othersGenesis = new Genesis(msg.sender, IERC20(worm));
         worm.transfer(address(othersGenesis), wormOthersPremineAmount);
         othersGenesis.revealAndLock(shares);
-
-        unwrap = new Unwrap(IERC20(worm), IERC20(wrappedWormToken));
-        worm.transfer(address(unwrap), wrappedWormTokenSupply);
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
