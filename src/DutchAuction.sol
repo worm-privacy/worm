@@ -10,7 +10,8 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 contract DutchAuction is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    event Purchased(address indexed buyer, uint256 amount, uint256 price, uint256 change);
+    event Purchased(address indexed buyer, uint256 amount, uint256 price);
+    event Finalized(uint256 ethCollected, uint256 tokensLeft);
 
     /// @notice ERC20 token being sold in this Dutch auction.
     IERC20 public token;
@@ -74,13 +75,16 @@ contract DutchAuction is ReentrancyGuard, Ownable {
      *         - Sends all collected ETH and remaining tokens to the owner.
      *         NOTE: Does NOT require that all tokens be sold.
      */
-    function finalize() external nonReentrant onlyInitialized {
-        require(currentPrice() == 0, "Auction has not yet ended!");
+    function finalize() external nonReentrant onlyInitialized onlyOwner {
+        uint256 tokensLeft = token.balanceOf(address(this));
+        require(currentPrice() == 0 || tokensLeft == 0, "Auction has not yet ended!");
         uint256 amount = address(this).balance;
         (bool success,) = owner().call{value: amount}("");
         require(success, "Transfer failed");
-        uint256 leftover = token.balanceOf(address(this));
-        token.safeTransfer(owner(), leftover);
+        if (tokensLeft > 0) {
+            token.safeTransfer(owner(), tokensLeft);
+        }
+        emit Finalized(amount, tokensLeft);
     }
 
     /**
@@ -101,6 +105,6 @@ contract DutchAuction is ReentrancyGuard, Ownable {
             require(success, "Cannot give back remainder!");
         }
         token.safeTransfer(msg.sender, bought);
-        emit Purchased(msg.sender, bought, price, change);
+        emit Purchased(msg.sender, bought, price);
     }
 }
