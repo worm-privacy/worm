@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/Dutch.sol";
+import "../src/DutchAuction.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockToken is ERC20 {
@@ -13,8 +13,8 @@ contract MockToken is ERC20 {
     }
 }
 
-contract DutchTest is Test {
-    Dutch auction;
+contract DutchAuctionTest is Test {
+    DutchAuction auction;
     MockToken token;
     address owner = address(0xA11CE);
     address buyer = address(0xBEEF);
@@ -29,10 +29,15 @@ contract DutchTest is Test {
     function setUp() public {
         token = new MockToken();
         startTime = block.timestamp + 100;
+        auction = new DutchAuction(owner, IERC20(address(token)), startTime, initialPrice, priceDecreasePerSecond);
+        token.mint(owner, initialTokens);
 
-        auction = new Dutch(owner, IERC20(address(token)), startTime, initialPrice, priceDecreasePerSecond);
+        vm.prank(owner);
+        token.approve(address(auction), initialTokens);
 
-        token.mint(address(auction), initialTokens);
+        vm.prank(owner);
+        auction.initialize(initialTokens);
+
         vm.deal(buyer, 1000 ether);
         vm.deal(buyer2, 1000 ether);
     }
