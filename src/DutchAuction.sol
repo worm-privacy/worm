@@ -28,6 +28,9 @@ contract DutchAuction is ReentrancyGuard, Ownable {
     /// @notice Amount the price decreases per second.
     uint256 public priceDecreasePerSecond;
 
+    /// @notice Number of purchases made.
+    uint256 public numPurchases;
+
     modifier onlyInitialized() {
         require(amountForSale != 0, "Auction not initialized!");
         _;
@@ -105,6 +108,7 @@ contract DutchAuction is ReentrancyGuard, Ownable {
             require(success, "Cannot give back remainder!");
         }
         token.safeTransfer(msg.sender, bought);
+        numPurchases += 1;
         emit Purchased(msg.sender, bought, price);
     }
 }
