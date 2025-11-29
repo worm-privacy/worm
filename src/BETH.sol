@@ -163,6 +163,10 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
      * @param _mintParams All parameters within a struct
      */
     function mintCoin(MintParams calldata _mintParams) public nonReentrant isInitialized {
+        // Disallow minting a single burn-address twice.
+        // The early nullifier check protects the original broadcaster from losing gas to front-running.
+        require(!nullifiers[_mintParams.nullifier], "Nullifier already consumed!");
+
         // Information bound to the burn (shifted right by 8 to fit within field elements).
         // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
         // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
@@ -196,8 +200,6 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         // Prover-fee and broadcaster-fee are paid from the revealed-amount!
         require(_mintParams.proverFee + _mintParams.broadcasterFee <= revealedAmountAfterFee, "More fee than revealed!");
 
-        // Disallow minting a single burn-address twice.
-        require(!nullifiers[_mintParams.nullifier], "Nullifier already consumed!");
         require(coinSource[_mintParams.remainingCoin] == 0, "Coin already minted!");
 
         bytes32 blockHash = blockhash(_mintParams.blockNumber);
