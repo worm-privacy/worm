@@ -22,6 +22,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 constant EPOCH_DURATION = 7 days;
+    uint256 constant MAX_EPOCHS = 52; // 1 year
     uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
     /// @notice Represents a user's locked stake.
@@ -114,6 +115,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
      * @param _numEpochs Number of epochs the tokens will remain locked.
      */
     function lock(uint256 _amount, uint256 _numEpochs) external nonReentrant {
+        require(_numEpochs <= MAX_EPOCHS, "Staking for too many epochs!");
         require(_amount > 0, "No amount specified!");
         uint256 startingEpoch = currentEpoch() + 1;
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
