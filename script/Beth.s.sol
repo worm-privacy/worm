@@ -60,6 +60,7 @@ contract BETHScript is Script {
         shares[0] = Genesis.Share({
             id: 0,
             owner: eip7503DotEth,
+            tge: 0,
             startTime: 0,
             initialAmount: 0 ether,
             amountPerSecond: 0.0001 ether,
@@ -68,6 +69,7 @@ contract BETHScript is Script {
         shares[1] = Genesis.Share({
             id: 1,
             owner: eip7503DotEth,
+            tge: 0,
             startTime: 0,
             initialAmount: 0 ether,
             amountPerSecond: 0.0001 ether,
@@ -76,6 +78,7 @@ contract BETHScript is Script {
         shares[2] = Genesis.Share({
             id: 2,
             owner: eip7503DotEth,
+            tge: 0,
             startTime: 0,
             initialAmount: 0 ether,
             amountPerSecond: 0.0001 ether,
@@ -84,6 +87,7 @@ contract BETHScript is Script {
         shares[3] = Genesis.Share({
             id: 3,
             owner: eip7503DotEth,
+            tge: 0,
             startTime: 0,
             initialAmount: 0 ether,
             amountPerSecond: 0.0001 ether,

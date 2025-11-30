@@ -24,6 +24,7 @@ contract Genesis is ReentrancyGuard {
     struct Share {
         uint256 id; // Unique identifier for the share
         address owner; // Address that can claim this share's emissions
+        uint256 tge; // Amount claimable right after reveal
         uint256 startTime; // Timestamp when share starts
         uint256 initialAmount; // Amount of token immediately released
         uint256 amountPerSecond; // Amount of token generated per second
@@ -59,12 +60,12 @@ contract Genesis is ReentrancyGuard {
      */
     function calculateClaimable(uint256 _shareId) public view returns (address, uint256, uint256) {
         Share storage share = shares[_shareId];
-        uint256 claimable = 0;
+        uint256 claimable = share.tge;
         if (block.timestamp >= share.startTime) {
             claimable += share.initialAmount;
             claimable += share.amountPerSecond * (block.timestamp - share.startTime);
-            claimable = Math.min(claimable, share.totalCap);
         }
+        claimable = Math.min(claimable, share.totalCap);
         return (share.owner, claimable, share.totalCap);
     }
 
@@ -90,6 +91,7 @@ contract Genesis is ReentrancyGuard {
      * @param _signature  Master signature for this Share.
      */
     function revealWithSignature(Share calldata _share, bytes calldata _signature) external {
+        require(msg.sender == _share.owner, "Only the share owner can reveal!");
         require(!locked, "Locked!");
         require(!shareRevealed[_share.id], "Share already revealed!");
 
