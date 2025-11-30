@@ -43,6 +43,8 @@ contract DutchAuction is ReentrancyGuard, Ownable {
         uint256 _initialPrice,
         uint256 _priceDecreasePerSecond
     ) Ownable(_owner) {
+        require(_startTime >= block.timestamp, "Start time must be in future!");
+        require(_priceDecreasePerSecond <= _initialPrice, "Price decrease rate too large!");
         token = _token;
         startTime = _startTime;
         initialPrice = _initialPrice;
@@ -102,6 +104,7 @@ contract DutchAuction is ReentrancyGuard, Ownable {
         uint256 tokensLeft = token.balanceOf(address(this));
         require(tokensLeft > 0, "No token left!");
         uint256 bought = Math.min(msg.value / price, tokensLeft);
+        require(bought > 0, "Buy at least 1 token!");
         uint256 change = msg.value - bought * price;
         if (change > 0) {
             (bool success,) = msg.sender.call{value: change}("");
