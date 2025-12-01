@@ -22,6 +22,7 @@ contract WORM is ERC20, ERC20Permit {
 
     mapping(uint256 => uint256) public epochTotal;
     mapping(uint256 => mapping(address => uint256)) public epochUser;
+    mapping(uint256 => uint256) public epochCount;
 
     /**
      * @notice Deploys the WORM contract with initial configuration.
@@ -131,6 +132,7 @@ contract WORM is ERC20, ERC20Permit {
         uint256 since;
         uint256[] userContribs;
         uint256[] totalContribs;
+        uint256[] countContribs;
     }
 
     /**
@@ -152,9 +154,11 @@ contract WORM is ERC20, ERC20Permit {
         uint256 epochRemainingTime = block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION;
         uint256[] memory userContribs = new uint256[](count);
         uint256[] memory totalContribs = new uint256[](count);
+        uint256[] memory countContribs = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
             userContribs[i] = epochUser[i + since][user];
             totalContribs[i] = epochTotal[i + since];
+            countContribs[i] = epochCount[i + since];
         }
         return Info({
             totalWorm: totalWorm,
@@ -164,7 +168,8 @@ contract WORM is ERC20, ERC20Permit {
             since: since,
             epochRemainingTime: epochRemainingTime,
             userContribs: userContribs,
-            totalContribs: totalContribs
+            totalContribs: totalContribs,
+            countContribs: countContribs
         });
     }
 
@@ -202,6 +207,7 @@ contract WORM is ERC20, ERC20Permit {
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochTotal[currEpoch + i] += _amountPerEpoch;
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
+            epochCount[currEpoch + i] += 1;
         }
         require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
         emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
