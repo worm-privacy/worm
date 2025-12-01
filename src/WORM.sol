@@ -219,7 +219,7 @@ contract WORM is ERC20, ERC20Permit {
      * @param _startingEpoch The starting epoch number from which to claim rewards.
      * @param _numEpochs The number of epochs to claim rewards for.
      */
-    function claim(uint256 _startingEpoch, uint256 _numEpochs) external {
+    function claim(uint256 _startingEpoch, uint256 _numEpochs) public {
         cacheRewards(_startingEpoch + _numEpochs);
         uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
         _mint(msg.sender, mintAmount);
@@ -227,5 +227,45 @@ contract WORM is ERC20, ERC20Permit {
             epochUser[_startingEpoch + i][msg.sender] = 0;
         }
         emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
+    }
+
+    struct EpochRange {
+        uint256 startingEpoch;
+        uint256 numEpochs;
+    }
+
+    /**
+     * @notice Ensure block ranges do not overlap with each other.
+     * @param _epochRanges Array of epoch ranges
+     */
+    function ensureNotOverlapping(EpochRange[] calldata _epochRanges) internal view {
+        for (uint256 i = 1; i < _epochRanges.length; i++) {
+            require(_epochRanges[i].startingEpoch >= _epochRanges[i - 1].startingEpoch + _epochRanges[i - 1].numEpochs);
+        }
+    }
+
+    /**
+     * @notice Allows a user to claim multiple epoch ranges.
+     * @param _epochRanges Array of epoch ranges
+     */
+    function multiClaim(EpochRange[] calldata _epochRanges) external {
+        ensureNotOverlapping(_epochRanges);
+        for (uint256 i = 0; i < _epochRanges.length; i++) {
+            claim(_epochRanges[i].startingEpoch, _epochRanges[i].numEpochs);
+        }
+    }
+
+    /**
+     * @notice Estimates the amount of tokens that can be minted for an array of epoch ranges.
+     * @param _epochRanges Array of epoch ranges
+     * @return The approximate amount of tokens that can be minted.
+     */
+    function multiApproximate(EpochRange[] calldata _epochRanges) public view returns (uint256) {
+        ensureNotOverlapping(_epochRanges);
+        uint256 mintAmount = 0;
+        for (uint256 i = 0; i < _epochRanges.length; i++) {
+            mintAmount += approximate(_epochRanges[i].startingEpoch, _epochRanges[i].numEpochs);
+        }
+        return mintAmount;
     }
 }
