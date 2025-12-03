@@ -5,6 +5,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract WORM is ERC20, ERC20Permit {
+    event EpochContribution(uint256 indexed epoch, address participant, uint256 amount);
     event Participated(address indexed participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
     event Claimed(address indexed claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
 
@@ -208,6 +209,7 @@ contract WORM is ERC20, ERC20Permit {
             epochTotal[currEpoch + i] += _amountPerEpoch;
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
             epochCount[currEpoch + i] += 1;
+            emit EpochContribution(currEpoch + i, msg.sender, _amountPerEpoch);
         }
         require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
         emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
