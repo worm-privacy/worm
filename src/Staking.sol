@@ -102,8 +102,11 @@ contract Staking is IRewardPool, ReentrancyGuard {
     /// @dev The caller must approve the contract before calling.
     /// @param _amount Amount of reward tokens to deposit.
     function depositReward(uint256 _amount) external nonReentrant {
-        rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 epoch = currentEpoch();
+        require(epoch > 0, "Cannot deposit reward in epoch 0");
+        require(epochTotalLocked[epoch - 1] > 0, "No stakers in previous epoch");
+        
+        rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
         epochReward[epoch] += _amount;
         emit RewardDeposited(msg.sender, epoch, _amount);
     }
