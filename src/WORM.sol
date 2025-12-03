@@ -174,6 +174,31 @@ contract WORM is ERC20, ERC20Permit {
         });
     }
 
+    struct EpochRange {
+        uint256 startingEpoch;
+        uint256 numEpochs;
+    }
+
+    /**
+     * @notice Estimates the amount of tokens that can be minted for an array of epoch ranges.
+     * @dev Ensures the ranges do not overlap with each other!
+     * @param _epochRanges Array of epoch ranges
+     * @return The approximate amount of tokens that can be minted.
+     */
+    function multiApproximate(EpochRange[] calldata _epochRanges) public view returns (uint256) {
+        uint256 mintAmount = 0;
+        for (uint256 i = 0; i < _epochRanges.length; i++) {
+            if (i > 0) {
+                require(
+                    _epochRanges[i].startingEpoch >= _epochRanges[i - 1].startingEpoch + _epochRanges[i - 1].numEpochs,
+                    "Ranges overlap!"
+                );
+            }
+            mintAmount += approximate(_epochRanges[i].startingEpoch, _epochRanges[i].numEpochs);
+        }
+        return mintAmount;
+    }
+
     /*
      * ========================
      * END OF VIEW FUNCTION!
@@ -231,43 +256,13 @@ contract WORM is ERC20, ERC20Permit {
         emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
     }
 
-    struct EpochRange {
-        uint256 startingEpoch;
-        uint256 numEpochs;
-    }
-
-    /**
-     * @notice Ensure block ranges do not overlap with each other.
-     * @param _epochRanges Array of epoch ranges
-     */
-    function ensureNotOverlapping(EpochRange[] calldata _epochRanges) internal view {
-        for (uint256 i = 1; i < _epochRanges.length; i++) {
-            require(_epochRanges[i].startingEpoch >= _epochRanges[i - 1].startingEpoch + _epochRanges[i - 1].numEpochs);
-        }
-    }
-
     /**
      * @notice Allows a user to claim multiple epoch ranges.
      * @param _epochRanges Array of epoch ranges
      */
     function multiClaim(EpochRange[] calldata _epochRanges) external {
-        ensureNotOverlapping(_epochRanges);
         for (uint256 i = 0; i < _epochRanges.length; i++) {
             claim(_epochRanges[i].startingEpoch, _epochRanges[i].numEpochs);
         }
-    }
-
-    /**
-     * @notice Estimates the amount of tokens that can be minted for an array of epoch ranges.
-     * @param _epochRanges Array of epoch ranges
-     * @return The approximate amount of tokens that can be minted.
-     */
-    function multiApproximate(EpochRange[] calldata _epochRanges) public view returns (uint256) {
-        ensureNotOverlapping(_epochRanges);
-        uint256 mintAmount = 0;
-        for (uint256 i = 0; i < _epochRanges.length; i++) {
-            mintAmount += approximate(_epochRanges[i].startingEpoch, _epochRanges[i].numEpochs);
-        }
-        return mintAmount;
     }
 }
