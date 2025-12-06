@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
-import {IVerifier} from "../src/IVerifier.sol";
+import {IVerifier} from "../src/interfaces/IVerifier.sol";
 import {Staking} from "../src/Staking.sol";
 
 contract AlwaysVerify is IVerifier {

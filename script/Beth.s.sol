@@ -6,11 +6,10 @@ import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
 import {Staking} from "../src/Staking.sol";
 import {Genesis} from "../src/Genesis.sol";
-import {DutchAuction} from "../src/DutchAuction.sol";
 import {ProofOfBurnVerifier} from "../src/ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "../src/SpendVerifier.sol";
-import {IVerifier} from "../src/IVerifier.sol";
-import {IRewardPool} from "../src/IRewardPool.sol";
+import {IVerifier} from "../src/interfaces/IVerifier.sol";
+import {IRewardPool} from "../src/interfaces/IRewardPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FakePool {
@@ -37,7 +36,6 @@ contract BETHScript is Script {
 
     Genesis public communityGenesis;
     Genesis public othersGenesis;
-    DutchAuction public auction;
 
     function setUp() public {}
 
@@ -48,12 +46,6 @@ contract BETHScript is Script {
         address communityGenesisMaster = eip7503DotEth;
         address bethPremineAddress = eip7503DotEth;
         uint256 bethPremineAmount = 0;
-
-        uint256 wormAuctionStartTime = block.timestamp;
-        address wormAuctionOwner = eip7503DotEth;
-        uint256 wormAuctionAmount = 100 ether;
-        uint256 wormAuctionInitialPrice = 0.1 ether;
-        uint256 wormAuctionPriceDecayPerSecond = 0.000001 ether;
 
         uint256 wormCommunityPremineAmount = 100 ether;
         Genesis.Share[] memory shares = new Genesis.Share[](4);
@@ -105,18 +97,9 @@ contract BETHScript is Script {
         IVerifier spendVeifier = new SpendVerifier();
 
         beth = new BETH(proofOfBurnVerifier, spendVeifier, bethPremineAddress, bethPremineAmount);
-        worm = new WORM(
-            IERC20(beth), msg.sender, wormCommunityPremineAmount + wormOthersPremineAmount + wormAuctionAmount
-        );
+        worm = new WORM(IERC20(beth), msg.sender, wormCommunityPremineAmount + wormOthersPremineAmount);
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
-        auction = new DutchAuction(
-            wormAuctionOwner,
-            IERC20(worm),
-            wormAuctionStartTime,
-            wormAuctionInitialPrice,
-            wormAuctionPriceDecayPerSecond
-        );
 
         communityGenesis = new Genesis(communityGenesisMaster, IERC20(worm));
         worm.transfer(address(communityGenesis), wormCommunityPremineAmount);
