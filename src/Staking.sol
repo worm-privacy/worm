@@ -100,15 +100,24 @@ contract Staking is IRewardPool, ReentrancyGuard {
 
     /// @notice Deposits reward tokens to be distributed for the current epoch.
     /// @dev The caller must approve the contract before calling.
+    /// @dev If there are no lockers in the previous epoch but rewards exist,
+    ///      those rewards are accumulated to current epoch.
     /// @param _amount Amount of reward tokens to deposit.
     function depositReward(uint256 _amount) external nonReentrant {
-        uint256 epoch = currentEpoch();
-        require(epoch > 0, "Cannot deposit reward in epoch 0");
-        require(epochTotalLocked[epoch - 1] > 0, "No stakers in previous epoch");
-        
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
-        epochReward[epoch] += _amount;
-        emit RewardDeposited(msg.sender, epoch, _amount);
+
+        uint256 epoch = currentEpoch();
+        uint256 totalAmount = _amount;
+
+        // Accumulate rewards from previous epoch if it had no lockers
+        if (epoch > 0 && epochTotalLocked[epoch - 1] == 0 && epochReward[epoch - 1] > 0) {
+            uint256 previousEpochReward = epochReward[epoch - 1];
+            epochReward[epoch - 1] = 0;
+            totalAmount += previousEpochReward;
+        }
+
+        epochReward[epoch] += totalAmount;
+        emit RewardDeposited(msg.sender, epoch, totalAmount);
     }
 
     /**
