@@ -79,7 +79,8 @@ contract Staking is IRewardPool, ReentrancyGuard {
             since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
             count = 1 + 2 * DEFAULT_INFO_MARGIN;
         }
-        uint256 epochRemainingTime = block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION;
+        uint256 epochRemainingTime =
+            EPOCH_DURATION - (block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION);
         uint256[] memory rewards = new uint256[](count);
         uint256[] memory userLocks = new uint256[](count);
         uint256[] memory totalLocks = new uint256[](count);

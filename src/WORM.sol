@@ -152,7 +152,8 @@ contract WORM is ERC20, ERC20Permit {
         }
         uint256 totalBeth = bethContract.totalSupply();
         uint256 totalWorm = this.totalSupply();
-        uint256 epochRemainingTime = block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION;
+        uint256 epochRemainingTime =
+            EPOCH_DURATION - (block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION);
         uint256[] memory userContribs = new uint256[](count);
         uint256[] memory totalContribs = new uint256[](count);
         uint256[] memory countContribs = new uint256[](count);
