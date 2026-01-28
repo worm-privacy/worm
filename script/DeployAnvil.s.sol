@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {BETH} from "../src/BETH.sol";
 import {WORM} from "../src/WORM.sol";
 import {Staking} from "../src/Staking.sol";
-import {Genesis} from "../src/Genesis.sol";
+import {DynamicDistributor} from "../src/distributors/DynamicDistributor.sol";
 import {ProofOfBurnVerifier} from "../src/ProofOfBurnVerifier.sol";
 import {SpendVerifier} from "../src/SpendVerifier.sol";
 import {IVerifier} from "../src/interfaces/IVerifier.sol";
@@ -33,9 +33,7 @@ contract DeployAnvilScript is Script {
     BETH public beth;
     WORM public worm;
     Staking public staking;
-
-    Genesis public communityGenesis;
-    Genesis public othersGenesis;
+    DynamicDistributor public dist;
 
     function setUp() public {}
 
@@ -45,16 +43,21 @@ contract DeployAnvilScript is Script {
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
 
+        uint256 premineAmount = 100 ether;
         beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 0);
-        worm = new WORM(IERC20(beth), msg.sender, 0);
+        worm = new WORM(IERC20(beth), msg.sender, premineAmount);
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
+
+        dist = new DynamicDistributor(IERC20(worm), UINT256_MAX, 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1);
+        worm.transfer(address(dist), premineAmount);
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
         console.log("Staking", address(staking));
         FakePool fakePool = new FakePool();
         console.log("Fake pool", address(fakePool));
+        console.log("Dynamic Distributor", address(dist));
 
         vm.stopBroadcast();
     }
