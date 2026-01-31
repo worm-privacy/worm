@@ -9,12 +9,7 @@ import {IRewardPool} from "./interfaces/IRewardPool.sol";
 contract Staking is IRewardPool, ReentrancyGuard {
     event RewardDeposited(address indexed depositor, uint256 epoch, uint256 amount);
     event Staked(
-        address indexed user,
-        uint256 indexed stakeId,
-        uint256 amount,
-        uint256 startingEpoch,
-        uint256 releaseEpoch,
-        uint256 numEpochs
+        address indexed user, uint256 indexed stakeId, uint256 amount, uint256 startingEpoch, uint256 numEpochs
     );
     event Released(address indexed user, uint256 indexed stakeId, uint256 amount);
     event RewardClaimed(address indexed user, uint256 fromEpoch, uint256 count, uint256 totalReward);
@@ -140,7 +135,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
                 released: false
             })
         );
-        emit Staked(msg.sender, stakeId, _amount, startingEpoch, startingEpoch + _numEpochs, _numEpochs);
+        emit Staked(msg.sender, stakeId, _amount, startingEpoch, _numEpochs);
     }
 
     /**
@@ -150,6 +145,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     function release(uint256 _stakeId) external nonReentrant {
         Stake storage stake = stakes[_stakeId];
         require(stake.amount != 0, "StakeInfo unavailable");
+        require(msg.sender == stake.owner, "Only the owner can release!");
         require(!stake.released, "Already released!");
         require(currentEpoch() >= stake.releaseEpoch, "Stake is locked!");
         stake.released = true;
