@@ -26,6 +26,8 @@ contract DynamicDistributor is Distributor {
      * @param _signature  Master signature for this Share.
      */
     function reveal(Share calldata _share, bytes calldata _signature) external {
+        require(block.timestamp < deadlineTimestamp, "Distribution has ended!");
+
         require(msg.sender == _share.owner, "Only the share owner can reveal!");
         require(_share.owner != address(0), "Share has no owner!");
         require(shares[_share.id].owner == address(0), "Share already revealed!");

@@ -72,7 +72,7 @@ contract Distributor is ReentrancyGuard {
      * @param _shareId Share identifier.
      */
     function trigger(uint256 _shareId) external nonReentrant {
-        require(block.timestamp < deadlineTimestamp, "Deadline!");
+        require(block.timestamp < deadlineTimestamp, "Distribution has eneded!");
         require(msg.sender == shares[_shareId].owner, "You are not the share owner!");
 
         Share storage share = shares[_shareId];
