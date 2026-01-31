@@ -5,8 +5,11 @@ import "forge-std/Test.sol";
 import {DynamicDistributor} from "../src/distributors/DynamicDistributor.sol";
 import {Distributor} from "../src/distributors/Distributor.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract DynamicDistributorTest is Test {
+    using MessageHashUtils for bytes32;
+
     ERC20Mock token;
     DynamicDistributor distributor;
 
@@ -24,11 +27,7 @@ contract DynamicDistributorTest is Test {
         masterPk = 0xBEEF;
         master = vm.addr(masterPk);
 
-        distributor = new DynamicDistributor(
-            token,
-            DEADLINE,
-            master
-        );
+        distributor = new DynamicDistributor(token, DEADLINE, master);
 
         token.mint(address(distributor), 10_000 ether);
     }
@@ -55,9 +54,8 @@ contract DynamicDistributorTest is Test {
 
         vm.prank(alice);
         distributor.reveal(share, sig);
-
-        Distributor.Share memory stored = distributor.shares(1);
-        assertEq(stored.owner, alice);
+        (, address owner,,,,,) = distributor.shares(1);
+        assertEq(owner, alice);
     }
 
     function test_RevealFailsWithInvalidSigner() public {

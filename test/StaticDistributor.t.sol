@@ -91,7 +91,7 @@ contract StaticDistributorTest is Test {
     function test_DeadlineBlocksClaims() public {
         vm.warp(DEADLINE + 1);
 
-        vm.expectRevert("Deadline!");
+        vm.expectRevert("Distribution has eneded!");
         distributor.trigger(1);
     }
 
