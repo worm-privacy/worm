@@ -105,6 +105,12 @@ contract Staking is IRewardPool, ReentrancyGuard {
     function depositReward(uint256 _amount) external nonReentrant {
         rewardToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 epoch = currentEpoch();
+
+        // Since week #0 is never claimable, move all week #0 rewards to week #1 instead!
+        if (epoch == 0) {
+            epoch = 1;
+        }
+
         epochReward[epoch] += _amount;
         emit RewardDeposited(msg.sender, epoch, _amount);
     }
