@@ -171,6 +171,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
     function release(uint256 _stakeIndex) external nonReentrant {
         Stake storage stake = stakes[msg.sender][_stakeIndex];
         require(stake.amount != 0, "StakeInfo unavailable");
+        require(msg.sender == stake.owner, "Only the owner can release!");
         require(!stake.released, "Already released!");
         require(currentEpoch() >= stake.releaseEpoch, "Stake is locked!");
         stake.released = true;
