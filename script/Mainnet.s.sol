@@ -19,101 +19,108 @@ contract BETHScript is Script {
     WORM public worm;
     Staking public staking;
 
+    uint256 constant PREMINE = 5851677.070643683978082748 ether;
+
     function setUp() public {}
+
+    function newNonVested(uint256 id, address owner, uint256 amount) internal pure returns (Distributor.Share memory) {
+        return Distributor.Share({
+            id: id, owner: owner, tge: amount, startTime: 0, initialAmount: 0, amountPerSecond: 0, totalCap: amount
+        });
+    }
+
+    function newVested(
+        uint256 id,
+        address owner,
+        uint256 tge,
+        uint256 amount,
+        uint256 blockTimestamp,
+        uint256 cliffPeriodInMonths,
+        uint256 vestingInMonths
+    ) internal pure returns (Distributor.Share memory) {
+        require(tge <= 1000, "TGE incorrect");
+        require(cliffPeriodInMonths <= vestingInMonths, "Cliff period incorrect");
+        uint256 startTime = blockTimestamp + (cliffPeriodInMonths * 4 weeks);
+        uint256 tgeAmount = amount * tge / 1000;
+        uint256 amountAfterTge = amount - tgeAmount;
+        uint256 initialAmount = amountAfterTge * cliffPeriodInMonths / vestingInMonths;
+        uint256 amountPerSecond = (amountAfterTge - initialAmount) / ((vestingInMonths - cliffPeriodInMonths) * 4 weeks);
+        return Distributor.Share({
+            id: id,
+            owner: owner,
+            tge: tgeAmount,
+            startTime: startTime,
+            initialAmount: initialAmount,
+            amountPerSecond: amountPerSecond,
+            totalCap: amount
+        });
+    }
+
+    function ofPremine(uint256 milliA, uint256 milliB) internal pure returns (uint256) {
+        return PREMINE * milliA * milliB / 1_000_000;
+    }
 
     function run() public {
         vm.startBroadcast();
 
         address eip7503DotEth = 0x8DC77b145d7009752D6947B3CF6D983caFA1C0Bb;
-        address keyvankDotEth = 0x372abb165e3283c4e71ce68efba2934fea5bff45;
+        address keyvankDotEth = 0x372abB165e3283C4E71ce68eFBA2934FEA5bFF45;
 
-        uint256 numStaticShares = 6;
+        uint256 numStaticShares = 7;
         Distributor.Share[] memory staticShares = new Distributor.Share[](numStaticShares);
 
-        staticShares[0] = Distributor.Share({
-            id: 0,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: 0,
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
+        staticShares[0] = newNonVested(0, eip7503DotEth, ofPremine(400, 1000)); // 40% LP/ICO
 
         // Team member #1
-        staticShares[1] = Distributor.Share({
-            id: 1,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: 0,
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
-
+        staticShares[1] = newVested(1, keyvankDotEth, 0, ofPremine(240, 800), block.timestamp, 6, 36);
         // Team member #2
-        staticShares[2] = Distributor.Share({
-            id: 2,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: 0,
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
+        staticShares[2] = newVested(2, keyvankDotEth, 0, ofPremine(240, 100), block.timestamp, 6, 36);
+        // Team member #2
+        staticShares[3] = newVested(3, keyvankDotEth, 0, ofPremine(240, 100), block.timestamp, 6, 36);
 
-        // Team member #3
-        staticShares[3] = Distributor.Share({
-            id: 3,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: 0,
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
+        // Advisors
+        staticShares[4] = newVested(4, eip7503DotEth, 0, ofPremine(10, 1000), block.timestamp, 6, 36);
 
         // Private investor
-        staticShares[4] = Distributor.Share({
-            id: 4,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: block.timestamp + (6 * 4 weeks),
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
+        staticShares[5] = newVested(5, eip7503DotEth, 0, ofPremine(80, 1000), block.timestamp, 6, 36);
 
-        // Foundation
-        staticShares[5] = Distributor.Share({
-            id: 5,
-            owner: eip7503DotEth,
-            tge: 1000 ether,
-            startTime: block.timestamp + (3 * 4 weeks),
-            initialAmount: 0,
-            amountPerSecond: 0,
-            totalCap: 1000 ether
-        });
+        // Foundation treasury
+        staticShares[6] = newVested(6, eip7503DotEth, 50, ofPremine(120, 1000), block.timestamp, 3, 36);
 
         uint256 staticsPremine = 0;
         for (uint256 i = 0; i < numStaticShares; i++) {
             staticsPremine += staticShares[i].totalCap;
         }
-        uint256 dynamicsPremine = 100 ether;
+        uint256 dynamicsPremine = PREMINE - staticsPremine;
+
+        require(877751 ether <= dynamicsPremine && dynamicsPremine <= 877752 ether, "Dynamics premine not in range!");
 
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
         beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0);
+
+        require(staticsPremine + dynamicsPremine == PREMINE, "Invalid premine!");
         worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine);
+        require(worm.balanceOf(msg.sender) == PREMINE, "Invalid WORM amount minted for deployer!");
+
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
 
         StaticDistributor staticDist = new StaticDistributor(IERC20(worm), UINT256_MAX, staticShares);
         worm.transfer(address(staticDist), staticsPremine);
+        require(worm.balanceOf(address(staticDist)) == staticsPremine, "Invalid WORM balance for static distributor!");
+        require(
+            worm.balanceOf(msg.sender) == PREMINE - staticsPremine,
+            "Invalid WORM balance after transfer to static distributor!"
+        );
 
         DynamicDistributor dynamicDist =
             new DynamicDistributor(IERC20(worm), block.timestamp + (3 * 4 weeks), address(0xa11ce));
         worm.transfer(address(dynamicDist), dynamicsPremine);
+        require(worm.balanceOf(address(dynamicDist)) == dynamicsPremine, "Invalid WORM balance for static distributor!");
+        require(worm.balanceOf(msg.sender) == 0, "Invalid WORM balance after transfer to dynamic distributor!");
+
+        require(worm.totalSupply() == PREMINE, "Invalid WORM total supply!");
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
