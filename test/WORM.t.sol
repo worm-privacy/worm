@@ -535,7 +535,7 @@ contract WORMTest is Test {
 
         vm.stopPrank();
 
-        (uint256 till, uint256[] memory result) = worm.epochsWithNonZeroRewards(0, worm.currentEpoch(), alice, 100);
+        (uint256 nextEpochToSearch, uint256[] memory result) = worm.epochsWithNonZeroRewards(0, worm.currentEpoch(), alice, 100);
         assertEq(result.length, 6); 
         assertEq(result[0], 0);
         assertEq(result[1], 1);
@@ -544,32 +544,32 @@ contract WORMTest is Test {
         assertEq(result[3], 52560);
         assertEq(result[4], 52561);
         assertEq(result[5], 52562);
-        assertEq(till, worm.currentEpoch());
+        assertEq(nextEpochToSearch, worm.currentEpoch());
 
-        (uint256 till2, uint256[] memory result2) = worm.epochsWithNonZeroRewards(0, worm.currentEpoch(), alice, 3);
+        (uint256 nextEpochToSearch2, uint256[] memory result2) = worm.epochsWithNonZeroRewards(0, worm.currentEpoch(), alice, 3);
         assertEq(result2.length, 3); 
         assertEq(result2[0], 0);
         assertEq(result2[1], 1);
         assertEq(result2[2], 2);
-        assertEq(till2, 3);
+        assertEq(nextEpochToSearch2, 3);
 
-        (uint256 till3, uint256[] memory result3) = worm.epochsWithNonZeroRewards(0, 100, alice, 10);
+        (uint256 nextEpochToSearch3, uint256[] memory result3) = worm.epochsWithNonZeroRewards(0, 100, alice, 10);
         assertEq(result3.length, 3); 
         assertEq(result3[0], 0);
         assertEq(result3[1], 1);
         assertEq(result3[2], 2);
-        assertEq(till3, 100);
+        assertEq(nextEpochToSearch3, 100);
 
-        (uint256 till4, uint256[] memory result4) = worm.epochsWithNonZeroRewards(100, 100, alice, 10);
+        (uint256 nextEpochToSearch4, uint256[] memory result4) = worm.epochsWithNonZeroRewards(100, 100, alice, 10);
         assertEq(result4.length, 0); 
-        assertEq(till4, 200);
+        assertEq(nextEpochToSearch4, 200);
 
-        (uint256 till5, uint256[] memory result5) = worm.epochsWithNonZeroRewards(100, worm.currentEpoch(), alice, 10);
+        (uint256 nextEpochToSearch5, uint256[] memory result5) = worm.epochsWithNonZeroRewards(100, worm.currentEpoch(), alice, 10);
         assertEq(result5.length, 3); 
         assertEq(result5[0], 52560);
         assertEq(result5[1], 52561);
         assertEq(result5[2], 52562);
-        assertEq(till5, worm.currentEpoch()+100);
+        assertEq(nextEpochToSearch5, worm.currentEpoch()+100);
     }
 
 }
