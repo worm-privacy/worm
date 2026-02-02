@@ -4,19 +4,15 @@ pragma solidity ^0.8.13;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IRewardPool} from "./interfaces/IRewardPool.sol";
 
 contract Staking is IRewardPool, ReentrancyGuard {
     event RewardDeposited(address indexed depositor, uint256 epoch, uint256 amount);
     event Staked(
-        address indexed user,
-        uint256 indexed stakeId,
-        uint256 amount,
-        uint256 startingEpoch,
-        uint256 releaseEpoch,
-        uint256 numEpochs
+        address indexed user, uint256 indexed stakeIndex, uint256 amount, uint256 startingEpoch, uint256 numEpochs
     );
-    event Released(address indexed user, uint256 indexed stakeId, uint256 amount);
+    event Released(address indexed user, uint256 indexed stakeIndex, uint256 amount);
     event RewardClaimed(address indexed user, uint256 fromEpoch, uint256 count, uint256 totalReward);
 
     using SafeERC20 for IERC20;
@@ -27,6 +23,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
 
     /// @notice Represents a user's locked stake.
     struct Stake {
+        uint256 index; // Stake index within array
         address owner; // Address that owns the stake
         uint256 amount; // Amount of tokens staked
         uint256 startingEpoch; // Epoch when staking becomes active
@@ -41,7 +38,30 @@ contract Staking is IRewardPool, ReentrancyGuard {
     mapping(uint256 => uint256) public epochTotalLocked;
     mapping(uint256 => mapping(address => uint256)) public epochUserLocked;
 
-    Stake[] public stakes;
+    mapping(address => Stake[]) public stakes;
+
+    /// @notice Returns number of staking operations a user has done so far.
+    /// @param _owner Staker's address
+    /// @return Number of stakings
+    function getStakesLength(address _owner) public view returns (uint256) {
+        return stakes[_owner].length;
+    }
+
+    /// @notice Get staking objects of a user within a range.
+    /// @param _owner Staker's address
+    /// @param _fromIndex Starting index
+    /// @param _maxCount Maximum number of indices to search
+    /// @return List of Stake objects
+    function getStakes(address _owner, uint256 _fromIndex, uint256 _maxCount) public view returns (Stake[] memory) {
+        Stake[] storage userStakes = stakes[_owner];
+        uint256 endIndex = Math.min(_fromIndex + _maxCount, userStakes.length);
+        uint256 count = endIndex - _fromIndex;
+        Stake[] memory ret = new Stake[](count);
+        for (uint256 i = 0; i < count; i++) {
+            ret[i] = userStakes[_fromIndex + i];
+        }
+        return ret;
+    }
 
     constructor(IERC20 _stakingToken, IERC20 _rewardToken) {
         stakingToken = _stakingToken;
@@ -130,9 +150,11 @@ contract Staking is IRewardPool, ReentrancyGuard {
             epochUserLocked[i][msg.sender] += _amount;
             epochTotalLocked[i] += _amount;
         }
-        uint256 stakeId = stakes.length;
-        stakes.push(
+        uint256 stakeIndex = stakes[msg.sender].length;
+        stakes[msg.sender]
+        .push(
             Stake({
+                index: stakeIndex,
                 owner: msg.sender,
                 amount: _amount,
                 startingEpoch: startingEpoch,
@@ -140,21 +162,21 @@ contract Staking is IRewardPool, ReentrancyGuard {
                 released: false
             })
         );
-        emit Staked(msg.sender, stakeId, _amount, startingEpoch, startingEpoch + _numEpochs, _numEpochs);
+        emit Staked(msg.sender, stakeIndex, _amount, startingEpoch, _numEpochs);
     }
 
     /**
      * @notice Releases a user's staked tokens after the lock period ends.
-     * @param _stakeId The ID of the stake to release.
+     * @param _stakeIndex The index of the stake to release.
      */
-    function release(uint256 _stakeId) external nonReentrant {
-        Stake storage stake = stakes[_stakeId];
+    function release(uint256 _stakeIndex) external nonReentrant {
+        Stake storage stake = stakes[msg.sender][_stakeIndex];
         require(stake.amount != 0, "StakeInfo unavailable");
         require(!stake.released, "Already released!");
         require(currentEpoch() >= stake.releaseEpoch, "Stake is locked!");
         stake.released = true;
         stakingToken.safeTransfer(stake.owner, stake.amount);
-        emit Released(stake.owner, _stakeId, stake.amount);
+        emit Released(stake.owner, _stakeIndex, stake.amount);
     }
 
     /**
