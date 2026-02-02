@@ -56,7 +56,13 @@ contract StakingTest is Test {
         staking.lock(100 ether, 2);
         vm.stopPrank();
 
-        assertEq(stakingToken.balanceOf(address(staking)), 100 ether, "stake not transferred");
+        vm.startPrank(bob);
+        staking.lock(50 ether, 1);
+        vm.stopPrank();
+
+        assertEq(stakingToken.balanceOf(address(staking)), 150 ether, "stake not transferred");
+        assertEq(stakingToken.balanceOf(alice), 900 ether, "lock failed");
+        assertEq(stakingToken.balanceOf(bob), 950 ether, "lock failed");
 
         // Before release epoch
         skipEpochs(1);
@@ -64,14 +70,39 @@ contract StakingTest is Test {
         vm.expectRevert(); // still locked
         staking.release(0);
         vm.stopPrank();
+        vm.startPrank(bob);
+        vm.expectRevert(); // still locked
+        staking.release(0);
+        vm.stopPrank();
 
         // After release epoch
-        skipEpochs(2);
+        skipEpochs(1);
+        vm.startPrank(bob);
+        staking.release(0); // Bob can release
+        vm.stopPrank();
         vm.startPrank(alice);
+        vm.expectRevert(); // Alice is still locked
+        staking.release(0);
+        vm.stopPrank();
+
+        // After release epoch
+        skipEpochs(1);
+        vm.startPrank(alice); // Alice can also release
         staking.release(0);
         vm.stopPrank();
 
         assertEq(stakingToken.balanceOf(alice), 1000 ether, "release failed");
+        assertEq(stakingToken.balanceOf(bob), 1000 ether, "release failed");
+
+        vm.startPrank(alice);
+        vm.expectRevert("Already released!");
+        staking.release(0);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        vm.expectRevert("Already released!");
+        staking.release(0);
+        vm.stopPrank();
     }
 
     function testDepositRewardAndClaimSingleStaker() public {
@@ -141,5 +172,49 @@ contract StakingTest is Test {
         vm.expectRevert("Cannot claim ongoing epoch!");
         staking.claimReward(1, 1);
         vm.stopPrank();
+    }
+
+    function testGetStakes() public {
+        vm.startPrank(alice);
+        staking.lock(100 ether, 2);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        staking.lock(100 ether, 2);
+        staking.lock(100 ether, 2);
+        vm.stopPrank();
+
+        vm.expectRevert("Invalid range!");
+        staking.getStakes(alice, 0, 2);
+
+        vm.expectRevert("Invalid range!");
+        staking.getStakes(bob, 0, 3);
+
+        vm.expectRevert("Invalid range!");
+        staking.getStakes(bob, 1, 2);
+
+        Staking.Stake[] memory stakesAlice = staking.getStakes(alice, 0, 1);
+        assertEq(stakesAlice[0].index, 0);
+        assertEq(stakesAlice[0].owner, alice);
+        assertEq(stakesAlice.length, 1);
+        assertEq(staking.getStakesLength(alice), 1);
+
+        Staking.Stake[] memory stakesBob = staking.getStakes(bob, 0, 2);
+        assertEq(stakesBob[0].index, 0);
+        assertEq(stakesBob[1].index, 1);
+        assertEq(stakesBob[0].owner, bob);
+        assertEq(stakesBob[1].owner, bob);
+        assertEq(stakesBob.length, 2);
+        assertEq(staking.getStakesLength(bob), 2);
+
+        Staking.Stake[] memory stakesBob2 = staking.getStakes(bob, 0, 1);
+        assertEq(stakesBob2[0].index, 0);
+        assertEq(stakesBob2[0].owner, bob);
+        assertEq(stakesBob2.length, 1);
+
+        Staking.Stake[] memory stakesBob3 = staking.getStakes(bob, 1, 1);
+        assertEq(stakesBob3[0].index, 1);
+        assertEq(stakesBob3[0].owner, bob);
+        assertEq(stakesBob3.length, 1);
     }
 }
