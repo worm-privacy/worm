@@ -124,6 +124,33 @@ contract WORM is ERC20, ERC20Permit {
         return mintAmount;
     }
 
+    function epochsWithNonZeroRewards(uint256 fromEpoch, uint256 numEpochs, address user, uint256 maxFound) public view returns (uint256 till, uint256[] memory epochs) {
+        // Initialize epochs array with maxFound capacity
+        epochs = new uint256[](maxFound);
+        uint256 foundCount = 0;
+        uint256 lastEpochWithRewards = fromEpoch;
+
+        uint256 maxEpoch = fromEpoch + numEpochs;
+        for (uint256 i = fromEpoch; i < maxEpoch; i++) {
+            // Check if user has participation in this epoch
+            if (epochUser[i][user] > 0) {
+                epochs[foundCount] = i;
+                foundCount++;
+                lastEpochWithRewards = i;
+                if (foundCount >= maxFound){
+                    break;
+                }
+            }
+        }
+
+        // Resize the array to actual found count
+        assembly {
+            mstore(epochs, foundCount)
+        }
+
+        till = lastEpochWithRewards + 1; // Next epoch to start searching from
+    }
+
     struct Info {
         uint256 totalWorm;
         uint256 totalBeth;
