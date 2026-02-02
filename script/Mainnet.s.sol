@@ -106,7 +106,7 @@ contract BETHScript is Script {
         staking = new Staking(IERC20(worm), IERC20(beth));
         beth.initRewardPool(IRewardPool(staking));
 
-        StaticDistributor staticDist = new StaticDistributor(IERC20(worm), UINT256_MAX, staticShares);
+        StaticDistributor staticDist = new StaticDistributor(IERC20(worm), staticShares);
         worm.transfer(address(staticDist), staticsPremine);
         require(worm.balanceOf(address(staticDist)) == staticsPremine, "Invalid WORM balance for static distributor!");
         require(

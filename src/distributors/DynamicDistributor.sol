@@ -13,11 +13,15 @@ contract DynamicDistributor is Distributor {
     /// @notice Address authorized to sign valid Share objects.
     address public master;
 
+    /// @notice Timestamp after which no new shares can be revealed.
+    uint256 public deadlineTimestamp;
+
     /// @notice Emitted when a share is successfully revealed.
     event ShareRevealed(Share share);
 
-    constructor(IERC20 _token, uint256 _deadlineTimestamp, address _master) Distributor(_token, _deadlineTimestamp) {
+    constructor(IERC20 _token, uint256 _deadlineTimestamp, address _master) Distributor(_token) {
         master = _master;
+        deadlineTimestamp = _deadlineTimestamp;
     }
 
     /**
@@ -26,7 +30,7 @@ contract DynamicDistributor is Distributor {
      * @param _signature  Master signature for this Share.
      */
     function reveal(Share calldata _share, bytes calldata _signature) external {
-        require(block.timestamp < deadlineTimestamp, "Distribution has ended!");
+        require(block.timestamp < deadlineTimestamp, "Reveal period has ended!");
 
         require(msg.sender == _share.owner, "Only the share owner can reveal!");
         require(_share.owner != address(0), "Share has no owner!");
