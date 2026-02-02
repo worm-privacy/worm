@@ -5,9 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Distributor} from "./Distributor.sol";
 
 contract StaticDistributor is Distributor {
-    constructor(IERC20 _token, uint256 _deadlineTimestamp, Share[] memory _shares)
-        Distributor(_token, _deadlineTimestamp)
-    {
+    constructor(IERC20 _token, Share[] memory _shares) Distributor(_token) {
         token = _token;
         for (uint256 i = 0; i < _shares.length; i++) {
             Share memory share = _shares[i];

@@ -15,9 +15,6 @@ contract Distributor is ReentrancyGuard {
     /// @notice ERC20 token distributed by this contract.
     IERC20 public token;
 
-    /// @notice Timestamp after which no tokens can be released.
-    uint256 public deadlineTimestamp;
-
     struct Share {
         uint256 id; // Unique identifier for the share
         address owner; // Address that can claim this share's emissions
@@ -34,8 +31,7 @@ contract Distributor is ReentrancyGuard {
     /// @notice Tracks how much has already been claimed for each share.
     mapping(uint256 => uint256) public shareClaimed;
 
-    constructor(IERC20 _token, uint256 _deadlineTimestamp) {
-        deadlineTimestamp = _deadlineTimestamp;
+    constructor(IERC20 _token) {
         token = _token;
     }
 
@@ -60,7 +56,6 @@ contract Distributor is ReentrancyGuard {
      * @param _newOwner Address of the new owner.
      */
     function changeOwner(uint256 _shareId, address _newOwner) external {
-        require(block.timestamp < deadlineTimestamp, "Deadline!");
         Share storage share = shares[_shareId];
         require(msg.sender == share.owner, "You are not the share owner!");
         share.owner = _newOwner;
@@ -72,7 +67,6 @@ contract Distributor is ReentrancyGuard {
      * @param _shareId Share identifier.
      */
     function trigger(uint256 _shareId) external nonReentrant {
-        require(block.timestamp < deadlineTimestamp, "Distribution has eneded!");
         require(msg.sender == shares[_shareId].owner, "You are not the share owner!");
 
         Share storage share = shares[_shareId];
