@@ -512,6 +512,6 @@ contract WORMTest is Test {
         assertEq(info.totalWorm, 0); // No WORM minted yet
         // Total BETH distributed to alice, bob, charlie, no more participants
         assertEq(info.totalBeth, 30000 ether);
-        assertEq(info.epochRemainingTime, 0); // Full epoch time remaining
+        assertEq(info.epochRemainingTime, 600); // Full epoch time remaining
     }
 }

@@ -20,6 +20,7 @@ contract DynamicDistributorTest is Test {
     uint256 constant DEADLINE = 10_000;
 
     address alice = address(0xA11CE);
+    address bob = address(0xB0B);
 
     function setUp() public {
         token = new ERC20Mock();
@@ -32,11 +33,19 @@ contract DynamicDistributorTest is Test {
         token.mint(address(distributor), 10_000 ether);
     }
 
-    function _signShare(Distributor.Share memory share) internal returns (bytes memory) {
+    function _signShare(Distributor.Share memory share) internal view returns (bytes memory) {
         bytes memory encoded = abi.encode(share);
         bytes32 hash = keccak256(encoded).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(masterPk, hash);
         return abi.encodePacked(r, s, v);
+    }
+
+    function test_DeadlineBlocksClaims() public {
+        vm.warp(DEADLINE + 1);
+
+        Distributor.Share memory emptyShare;
+        vm.expectRevert("Reveal period has ended!");
+        distributor.reveal(emptyShare, "");
     }
 
     function test_RevealValidShare() public {
@@ -112,12 +121,30 @@ contract DynamicDistributorTest is Test {
         vm.prank(alice);
         distributor.reveal(share, sig);
 
-        vm.warp(START + 100);
+        vm.warp(START + 50);
 
         vm.prank(alice);
         distributor.trigger(1);
 
-        assertEq(token.balanceOf(alice), 200 ether);
+        assertEq(token.balanceOf(alice), 150 ether);
+
+        vm.prank(alice);
+        distributor.changeOwner(1, bob);
+
+        vm.prank(alice);
+        vm.expectRevert("You are not the share owner!");
+        distributor.trigger(1);
+
+        assertEq(token.balanceOf(bob), 0 ether);
+        vm.warp(START + 100);
+        vm.prank(bob);
+        distributor.trigger(1);
+        assertEq(token.balanceOf(bob), 50 ether);
+
+        vm.warp(START + 1000);
+        vm.prank(bob);
+        vm.expectRevert("Nothing to claim!");
+        distributor.trigger(1);
     }
 
     function test_RevealCannotBeCalledTwice() public {
