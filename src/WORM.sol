@@ -133,10 +133,10 @@ contract WORM is ERC20, ERC20Permit {
         uint256 maxEpoch = _fromEpoch + _numEpochs;
         for (uint256 i = _fromEpoch; i < maxEpoch; i++) {
             // Check if user has participation in this epoch
+            lastEpochWithRewards = i;
             if (epochUser[i][_user] > 0) {
                 epochs[foundCount] = i;
                 foundCount++;
-                lastEpochWithRewards = i;
                 if (foundCount >= _maxFound){
                     break;
                 }

@@ -544,7 +544,7 @@ contract WORMTest is Test {
         assertEq(result[3], 52560);
         assertEq(result[4], 52561);
         assertEq(result[5], 52562);
-        assertEq(till, 52563);
+        assertEq(till, worm.currentEpoch());
 
         (uint256 till2, uint256[] memory result2) = worm.epochsWithNonZeroRewards(0, worm.currentEpoch(), alice, 3);
         assertEq(result2.length, 3); 
@@ -552,6 +552,24 @@ contract WORMTest is Test {
         assertEq(result2[1], 1);
         assertEq(result2[2], 2);
         assertEq(till2, 3);
+
+        (uint256 till3, uint256[] memory result3) = worm.epochsWithNonZeroRewards(0, 100, alice, 10);
+        assertEq(result3.length, 3); 
+        assertEq(result3[0], 0);
+        assertEq(result3[1], 1);
+        assertEq(result3[2], 2);
+        assertEq(till3, 100);
+
+        (uint256 till4, uint256[] memory result4) = worm.epochsWithNonZeroRewards(100, 100, alice, 10);
+        assertEq(result4.length, 0); 
+        assertEq(till4, 200);
+
+        (uint256 till5, uint256[] memory result5) = worm.epochsWithNonZeroRewards(100, worm.currentEpoch(), alice, 10);
+        assertEq(result5.length, 3); 
+        assertEq(result5[0], 52560);
+        assertEq(result5[1], 52561);
+        assertEq(result5[2], 52562);
+        assertEq(till5, worm.currentEpoch()+100);
     }
 
 }
