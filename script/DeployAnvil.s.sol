@@ -43,20 +43,20 @@ contract DeployAnvilScript is Script {
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
 
-        uint256 premineAmount = 100 ether;
-        beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 0);
+        uint256 premineAmount = 40000 ether;
+        beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 1000 ether);
         worm = new WORM(IERC20(beth), msg.sender, premineAmount);
-        staking = new Staking(IERC20(worm), IERC20(beth));
+        staking = new Staking(IERC20(worm), IERC20(beth), 1 days);
         beth.initRewardPool(IRewardPool(staking));
 
-        dist = new DynamicDistributor(IERC20(worm), UINT256_MAX, 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1);
-        worm.transfer(address(dist), premineAmount);
+        dist = new DynamicDistributor(IERC20(worm), UINT256_MAX, 0xf7d5E3D3546ebf28bDfC55cfceb0E62462E16C05);
+        worm.transfer(address(dist), 20000 ether);
+        worm.transfer(address(0x4CFD0573feDe55f980724373469A32dd7a1619c5), 20000 ether);
+        worm.transfer(address(0x4CFD0573feDe55f980724373469A32dd7a1619c5), 1000 ether);
 
         console.log("BETH", address(beth));
         console.log("WORM", address(worm));
         console.log("Staking", address(staking));
-        FakePool fakePool = new FakePool();
-        console.log("Fake pool", address(fakePool));
         console.log("Dynamic Distributor", address(dist));
 
         vm.stopBroadcast();

@@ -18,7 +18,7 @@ contract StakingTest is Test {
     function setUp() public {
         stakingToken = new ERC20Mock();
         rewardToken = new ERC20Mock();
-        staking = new Staking(IERC20(address(stakingToken)), IERC20(address(rewardToken)));
+        staking = new Staking(IERC20(address(stakingToken)), IERC20(address(rewardToken)), 7 days);
 
         // Mint initial balances
         stakingToken.mint(alice, 1000 ether);

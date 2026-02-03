@@ -39,6 +39,15 @@ contract DynamicDistributorTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
+    function test_DeadlineBlocksClaims() public {
+        vm.warp(DEADLINE + 1);
+
+        Distributor.Share memory emptyShare;
+
+        vm.expectRevert("Reveal period has ended!");
+        distributor.reveal(emptyShare, "");
+    }
+
     function test_RevealValidShare() public {
         Distributor.Share memory share = Distributor.Share({
             id: 1,

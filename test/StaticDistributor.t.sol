@@ -30,7 +30,7 @@ contract StaticDistributorTest is Test {
             totalCap: 1_000 ether
         });
 
-        distributor = new StaticDistributor(token, DEADLINE, shares);
+        distributor = new StaticDistributor(token, shares);
 
         token.mint(address(distributor), 1_000 ether);
     }
@@ -86,13 +86,6 @@ contract StaticDistributorTest is Test {
         distributor.trigger(1);
 
         assertEq(token.balanceOf(alice), 1_000 ether);
-    }
-
-    function test_DeadlineBlocksClaims() public {
-        vm.warp(DEADLINE + 1);
-
-        vm.expectRevert("Distribution has eneded!");
-        distributor.trigger(1);
     }
 
     function test_ChangeOwner() public {

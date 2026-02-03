@@ -17,7 +17,6 @@ contract Staking is IRewardPool, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
 
-    uint256 constant EPOCH_DURATION = 7 days;
     uint256 constant MAX_EPOCHS = 52; // 1 year
     uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
@@ -31,9 +30,10 @@ contract Staking is IRewardPool, ReentrancyGuard {
         bool released; // Whether the stake has already been released
     }
 
-    IERC20 public stakingToken;
-    IERC20 public rewardToken;
-    uint256 public startingTimestamp;
+    IERC20 public immutable stakingToken;
+    IERC20 public immutable rewardToken;
+    uint256 public immutable startingTimestamp;
+    uint256 public immutable epochDuration;
     mapping(uint256 => uint256) public epochReward;
     mapping(uint256 => uint256) public epochTotalLocked;
     mapping(uint256 => mapping(address => uint256)) public epochUserLocked;
@@ -62,16 +62,17 @@ contract Staking is IRewardPool, ReentrancyGuard {
         return ret;
     }
 
-    constructor(IERC20 _stakingToken, IERC20 _rewardToken) {
+    constructor(IERC20 _stakingToken, IERC20 _rewardToken, uint256 _epochDuration) {
         stakingToken = _stakingToken;
         rewardToken = _rewardToken;
         startingTimestamp = block.timestamp;
+        epochDuration = _epochDuration;
     }
 
     /// @notice Returns the current epoch index based on time since deployment.
     /// @return The zero-based epoch number.
     function currentEpoch() public view returns (uint256) {
-        return (block.timestamp - startingTimestamp) / EPOCH_DURATION;
+        return (block.timestamp - startingTimestamp) / epochDuration;
     }
 
     /// @notice Aggregated epoch, lock, and reward information returned by `info()`.
@@ -99,7 +100,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
             count = 1 + 2 * DEFAULT_INFO_MARGIN;
         }
         uint256 epochRemainingTime =
-            EPOCH_DURATION - (block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION);
+            epochDuration - (block.timestamp - startingTimestamp - currentEpoch() * epochDuration);
         uint256[] memory rewards = new uint256[](count);
         uint256[] memory userLocks = new uint256[](count);
         uint256[] memory totalLocks = new uint256[](count);
