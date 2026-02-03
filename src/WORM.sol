@@ -128,19 +128,20 @@ contract WORM is ERC20, ERC20Permit {
         // Initialize epochs array with maxFound capacity
         epochs = new uint256[](_maxFound);
         uint256 foundCount = 0;
-        uint256 lastEpochWithRewards = _fromEpoch;
 
         uint256 maxEpoch = _fromEpoch + _numEpochs;
-        for (uint256 i = _fromEpoch; i < maxEpoch; i++) {
-            // Check if user has participation in this epoch
-            lastEpochWithRewards = i;
+        uint256 i = _fromEpoch;
+        while (i < maxEpoch) {
+            // Check if user has claimable reward
             if (epochUser[i][_user] > 0) {
                 epochs[foundCount] = i;
                 foundCount++;
                 if (foundCount >= _maxFound){
+                    i++;
                     break;
                 }
             }
+            i++;
         }
 
         // Resize the array to actual found count
@@ -148,7 +149,7 @@ contract WORM is ERC20, ERC20Permit {
             mstore(epochs, foundCount)
         }
 
-        nextEpochToSearch = lastEpochWithRewards + 1; // Next epoch to start searching from
+        nextEpochToSearch = i;
     }
 
     struct Info {
