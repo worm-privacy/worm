@@ -152,8 +152,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
             epochTotalLocked[i] += _amount;
         }
         uint256 stakeIndex = stakes[msg.sender].length;
-        stakes[msg.sender]
-        .push(
+        stakes[msg.sender].push(
             Stake({
                 index: stakeIndex,
                 owner: msg.sender,

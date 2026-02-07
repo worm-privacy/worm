@@ -167,17 +167,16 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
         // This ensures that the broadcaster and prover cannot alter the BETH receiver
         // and cannot claim more BETH than the amount the burner has authorized.
-        uint256 burnExtraCommitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            _mintParams.broadcasterFee,
-                            _mintParams.proverFee,
-                            _mintParams.revealedAmountReceiver,
-                            _mintParams.receiverPostMintHook
-                        )
-                    )
-                ) >> 8;
+        uint256 burnExtraCommitment = uint256(
+            keccak256(
+                abi.encodePacked(
+                    _mintParams.broadcasterFee,
+                    _mintParams.proverFee,
+                    _mintParams.revealedAmountReceiver,
+                    _mintParams.receiverPostMintHook
+                )
+            )
+        ) >> 8;
 
         uint256 poolFee = address(rewardPool) != address(0) ? (_mintParams.revealedAmount / POOL_SHARE_INV) : 0; // 0.5%
         uint256 revealedAmountAfterFee = _mintParams.revealedAmount - poolFee;
@@ -201,19 +200,18 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         require(blockHash != bytes32(0), "Block root unavailable!");
 
         // Circuit public inputs are passed through a compact keccak hash for gas optimization.
-        uint256 commitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            blockHash,
-                            _mintParams.nullifier,
-                            _mintParams.remainingCoin,
-                            _mintParams.revealedAmount,
-                            burnExtraCommitment,
-                            proofExtraCommitment
-                        )
-                    )
-                ) >> 8;
+        uint256 commitment = uint256(
+            keccak256(
+                abi.encodePacked(
+                    blockHash,
+                    _mintParams.nullifier,
+                    _mintParams.remainingCoin,
+                    _mintParams.revealedAmount,
+                    burnExtraCommitment,
+                    proofExtraCommitment
+                )
+            )
+        ) >> 8;
         require(
             proofOfBurnVerifier.verifyProof(_mintParams.pA, _mintParams.pB, _mintParams.pC, [commitment]),
             "Invalid proof!"
@@ -266,17 +264,16 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         require(rootCoin != 0, "Coin does not exist");
         require(coinSource[_spendParams.remainingCoin] == 0, "Remaining coin already exists");
 
-        uint256 commitment =
-            uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            _spendParams.coin,
-                            _spendParams.revealedAmount,
-                            _spendParams.remainingCoin,
-                            uint256(0) // No extra-commitment
-                        )
-                    )
-                ) >> 8;
+        uint256 commitment = uint256(
+            keccak256(
+                abi.encodePacked(
+                    _spendParams.coin,
+                    _spendParams.revealedAmount,
+                    _spendParams.remainingCoin,
+                    uint256(0) // No extra-commitment
+                )
+            )
+        ) >> 8;
         require(
             spendVerifier.verifyProof(_spendParams.pA, _spendParams.pB, _spendParams.pC, [commitment]), "Invalid proof!"
         );
