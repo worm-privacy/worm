@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract WORM is ERC20, ERC20Permit {
-    event EpochContribution(uint256 indexed epoch, address participant, uint256 amount);
     event Participated(address indexed participant, uint256 fromEpoch, uint256 numEpochs, uint256 amountPerEpoch);
     event Claimed(address indexed claimant, uint256 fromEpoch, uint256 numEpochs, uint256 totalClaimed);
 
@@ -25,7 +24,6 @@ contract WORM is ERC20, ERC20Permit {
 
     mapping(uint256 => uint256) public epochTotal;
     mapping(uint256 => mapping(address => uint256)) public epochUser;
-    mapping(uint256 => uint256) public epochCount;
 
     /**
      * @notice Deploys the WORM contract with initial configuration.
@@ -173,7 +171,6 @@ contract WORM is ERC20, ERC20Permit {
         uint256 since;
         uint256[] userContribs;
         uint256[] totalContribs;
-        uint256[] countContribs;
     }
 
     /**
@@ -200,7 +197,6 @@ contract WORM is ERC20, ERC20Permit {
         for (uint256 i = 0; i < count; i++) {
             userContribs[i] = epochUser[i + since][user];
             totalContribs[i] = epochTotal[i + since];
-            countContribs[i] = epochCount[i + since];
         }
         return Info({
             totalWorm: totalWorm,
@@ -210,8 +206,7 @@ contract WORM is ERC20, ERC20Permit {
             since: since,
             epochRemainingTime: epochRemainingTime,
             userContribs: userContribs,
-            totalContribs: totalContribs,
-            countContribs: countContribs
+            totalContribs: totalContribs
         });
     }
 
@@ -281,8 +276,6 @@ contract WORM is ERC20, ERC20Permit {
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochTotal[currEpoch + i] += _amountPerEpoch;
             epochUser[currEpoch + i][msg.sender] += _amountPerEpoch;
-            epochCount[currEpoch + i] += 1;
-            emit EpochContribution(currEpoch + i, msg.sender, _amountPerEpoch);
         }
         require(bethContract.transferFrom(msg.sender, address(this), _numEpochs * _amountPerEpoch), "TF");
         emit Participated(msg.sender, currEpoch, _numEpochs, _amountPerEpoch);
@@ -301,10 +294,11 @@ contract WORM is ERC20, ERC20Permit {
 
         cacheRewards(_startingEpoch + _numEpochs);
         uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
-        _mint(msg.sender, mintAmount);
         for (uint256 i = 0; i < _numEpochs; i++) {
             epochUser[_startingEpoch + i][msg.sender] = 0;
         }
+
+        _mint(msg.sender, mintAmount);
         emit Claimed(msg.sender, _startingEpoch, _numEpochs, mintAmount);
     }
 
