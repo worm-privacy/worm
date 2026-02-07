@@ -102,7 +102,7 @@ contract BETHScript is Script {
         beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0);
 
         require(staticsPremine + dynamicsPremine == PREMINE, "Invalid premine!");
-        worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine, startingTimestamp);
+        worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine, startingTimestamp, 0);
         require(worm.balanceOf(msg.sender) == PREMINE, "Invalid WORM amount minted for deployer!");
 
         staking = new Staking(IERC20(worm), IERC20(beth), 7 days, startingTimestamp);

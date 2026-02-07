@@ -27,7 +27,7 @@ contract WORMTest is Test {
     }
 
     function test_reward() public {
-        worm = new WORM(IERC20(address(0)), address(this), 0, 0);
+        worm = new WORM(IERC20(address(0)), address(this), 0, 0, 0);
         worm.cacheRewards(10093127);
         uint256 ts = block.timestamp;
         assertEq(worm.currentEpoch(), 0);
@@ -78,7 +78,7 @@ contract WORMTest is Test {
     function test_constructor() public {
         uint256 preMineAmount = 1000 ether;
         // Test with preMine
-        worm = new WORM(IERC20(address(beth)), alice, preMineAmount, 0);
+        worm = new WORM(IERC20(address(beth)), alice, preMineAmount, 0, 0);
         assertEq(address(worm.bethContract()), address(beth));
         assertEq(worm.startingTimestamp(), block.timestamp);
         assertEq(worm.cachedReward(0), 50 ether);
@@ -86,12 +86,12 @@ contract WORMTest is Test {
         assertEq(worm.totalSupply(), preMineAmount);
 
         // Test without preMine
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
         assertEq(worm.totalSupply(), 0);
     }
 
     function test_currentEpoch() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
         uint256 startTime = block.timestamp;
 
         assertEq(worm.currentEpoch(), 0);
@@ -110,7 +110,7 @@ contract WORMTest is Test {
     }
 
     function test_rewardOf() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         // Epoch 0 should be initial reward
         assertEq(worm.rewardOf(0), 50 ether);
@@ -129,7 +129,7 @@ contract WORMTest is Test {
     }
 
     function test_cacheRewards() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         assertEq(worm.cachedRewardEpoch(), 0);
 
@@ -147,7 +147,7 @@ contract WORMTest is Test {
     }
 
     function test_participate_with_zero_epochs() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         vm.startPrank(alice);
         beth.approve(address(worm), 100 ether);
@@ -157,7 +157,7 @@ contract WORMTest is Test {
     }
 
     function test_participate_single_epoch_by_single_user() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 amount = 100 ether;
         vm.startPrank(alice);
@@ -190,7 +190,7 @@ contract WORMTest is Test {
     }
 
     function test_participate_multi_epochs_by_single_user() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 amountPerEpoch = 50 ether;
         uint256 numEpochs = 3;
@@ -229,7 +229,7 @@ contract WORMTest is Test {
     }
 
     function test_participate_single_epoch_by_multi_users() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 aliceAmount = 10 ether;
         uint256 bobAmount = 30 ether;
@@ -294,7 +294,7 @@ contract WORMTest is Test {
     }
 
     function test_participate_multi_epochs_by_multi_users() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
         uint256 startTime = block.timestamp;
 
         // |       | 0 | 1 | 2 | 3 | 4 |
@@ -429,7 +429,7 @@ contract WORMTest is Test {
     }
 
     function test_claim_ongoing_epoch() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 amount = 100 ether;
         vm.startPrank(alice);
@@ -443,7 +443,7 @@ contract WORMTest is Test {
     }
 
     function test_calculateMintAmount() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
         uint256 startTime = block.timestamp;
 
         uint256 amount = 100 ether;
@@ -460,7 +460,7 @@ contract WORMTest is Test {
     }
 
     function test_approximate() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 amountPerEpoch = 100 ether;
         uint256 numEpochs = 3;
@@ -474,7 +474,7 @@ contract WORMTest is Test {
     }
 
     function test_info() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 amount = 100 ether;
         vm.startPrank(alice);
@@ -496,7 +496,7 @@ contract WORMTest is Test {
     }
 
     function test_info_with_default_parameters() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         // Should use default margin (5 epochs before and after)
         WORM.Info memory info = worm.info(alice, 0, 0);
@@ -513,7 +513,7 @@ contract WORMTest is Test {
     }
 
     function test_epochsWithNonZeroRewards() public {
-        worm = new WORM(IERC20(address(beth)), address(0), 0, 0);
+        worm = new WORM(IERC20(address(beth)), address(0), 0, 0, 0);
 
         uint256 oneYear = 60 * 60 * 24 * 365;
 
