@@ -32,16 +32,16 @@ contract BETHScript is Script {
     function newVested(
         uint256 id,
         address owner,
-        uint256 tge,
+        uint256 tgeBips,
         uint256 amount,
         uint256 blockTimestamp,
         uint256 cliffPeriodInMonths,
         uint256 vestingInMonths
     ) internal pure returns (Distributor.Share memory) {
-        require(tge <= 1000, "TGE incorrect");
+        require(tgeBips <= 10000, "TGE should be in basis points");
         require(cliffPeriodInMonths <= vestingInMonths, "Cliff period incorrect");
         uint256 startTime = blockTimestamp + (cliffPeriodInMonths * 4 weeks);
-        uint256 tgeAmount = amount * tge / 1000;
+        uint256 tgeAmount = amount * tgeBips / 10000;
         uint256 amountAfterTge = amount - tgeAmount;
         uint256 initialAmount = amountAfterTge * cliffPeriodInMonths / vestingInMonths;
         uint256 amountPerSecond = (amountAfterTge - initialAmount) / ((vestingInMonths - cliffPeriodInMonths) * 4 weeks);
@@ -56,8 +56,8 @@ contract BETHScript is Script {
         });
     }
 
-    function ofPremine(uint256 milliA, uint256 milliB) internal pure returns (uint256) {
-        return PREMINE * milliA * milliB / 1_000_000;
+    function ofPremine(uint256 bipsA, uint256 bipsB) internal pure returns (uint256) {
+        return PREMINE * bipsA * bipsB / 100_000_000;
     }
 
     function run() public {
@@ -71,23 +71,23 @@ contract BETHScript is Script {
         uint256 numStaticShares = 7;
         Distributor.Share[] memory staticShares = new Distributor.Share[](numStaticShares);
 
-        staticShares[0] = newNonVested(0, eip7503DotEth, ofPremine(400, 1000)); // 40% LP/ICO
+        staticShares[0] = newNonVested(0, eip7503DotEth, ofPremine(4000, 10000)); // 40% LP/ICO
 
         // Team member #1
-        staticShares[1] = newVested(1, keyvankDotEth, 0, ofPremine(240, 800), block.timestamp, 6, 36);
+        staticShares[1] = newVested(1, keyvankDotEth, 0, ofPremine(2400, 8000), block.timestamp, 6, 36);
         // Team member #2
-        staticShares[2] = newVested(2, keyvankDotEth, 0, ofPremine(240, 100), block.timestamp, 6, 36);
+        staticShares[2] = newVested(2, keyvankDotEth, 0, ofPremine(2400, 1000), block.timestamp, 6, 36);
         // Team member #2
-        staticShares[3] = newVested(3, keyvankDotEth, 0, ofPremine(240, 100), block.timestamp, 6, 36);
+        staticShares[3] = newVested(3, keyvankDotEth, 0, ofPremine(2400, 1000), block.timestamp, 6, 36);
 
         // Advisors
-        staticShares[4] = newVested(4, eip7503DotEth, 0, ofPremine(10, 1000), block.timestamp, 6, 36);
+        staticShares[4] = newVested(4, eip7503DotEth, 0, ofPremine(100, 10000), block.timestamp, 6, 36);
 
         // Private investor
-        staticShares[5] = newVested(5, eip7503DotEth, 0, ofPremine(80, 1000), block.timestamp, 6, 36);
+        staticShares[5] = newVested(5, eip7503DotEth, 0, ofPremine(800, 10000), block.timestamp, 6, 36);
 
         // Foundation treasury
-        staticShares[6] = newVested(6, eip7503DotEth, 50, ofPremine(120, 1000), block.timestamp, 3, 36);
+        staticShares[6] = newVested(6, eip7503DotEth, 50, ofPremine(1200, 10000), block.timestamp, 3, 36);
 
         uint256 staticsPremine = 0;
         for (uint256 i = 0; i < numStaticShares; i++) {
