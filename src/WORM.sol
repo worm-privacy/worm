@@ -15,8 +15,8 @@ contract WORM is ERC20, ERC20Permit {
     uint256 constant REWARD_DECAY_DENOMINATOR = 10000000000000000;
     uint256 constant DEFAULT_INFO_MARGIN = 5; // X epochs before and X epochs after the current epoch
 
-    IERC20 public bethContract;
-    uint256 public startingTimestamp;
+    IERC20 public immutable bethContract;
+    uint256 public immutable startingTimestamp;
 
     uint256 public cachedRewardEpoch = 0;
     mapping(uint256 => uint256) public cachedReward;

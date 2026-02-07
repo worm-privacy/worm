@@ -16,8 +16,9 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     address public initializer; // The address which has the permission to initialize the rewardPool
     IRewardPool public rewardPool;
 
-    IVerifier public proofOfBurnVerifier;
-    IVerifier public spendVerifier;
+    IVerifier public immutable proofOfBurnVerifier;
+    IVerifier public immutable spendVerifier;
+
     mapping(uint256 => bool) public nullifiers;
 
     mapping(uint256 => uint256) public coinSource; // Map each coin to its root coin
