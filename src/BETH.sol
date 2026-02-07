@@ -163,6 +163,9 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         // The early nullifier check protects the original broadcaster from losing gas to front-running.
         require(!nullifiers[_mintParams.nullifier], "Nullifier already consumed!");
 
+        // For double checking the amount added to total-supply after mints
+        uint256 totalSupplyBeforeMint = totalSupply();
+
         // Information bound to the burn (shifted right by 8 to fit within field elements).
         // The burn address is computed as: Poseidon4(POSEIDON_BURN_PREFIX, burnKey, revealAmount, burnExtraCommitment)[:20].
         // Once ETH is sent to the burn address, the data in burnExtraCommitment cannot be changed.
@@ -232,6 +235,9 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
             _mintParams.receiverPostMintHook
         );
         mintForRewardPool(poolFee);
+
+        // Extra security!
+        require(totalSupply() - totalSupplyBeforeMint <= _mintParams.revealedAmount, "Minted more than revealed!");
     }
 
     /*
@@ -256,6 +262,9 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
      * @param _spendParams All parameters within a struct
      */
     function spendCoin(SpendParams calldata _spendParams) public nonReentrant {
+        // For double checking the amount added to total-supply after mints
+        uint256 totalSupplyBeforeMint = totalSupply();
+
         uint256 poolFee = address(rewardPool) != address(0) ? (_spendParams.revealedAmount / POOL_SHARE_INV) : 0; // 0.5%
         uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
 
@@ -287,5 +296,8 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         // STATE CHANGES
         _mint(owner, revealedAmountAfterFee);
         mintForRewardPool(poolFee);
+
+        // Extra security!
+        require(totalSupply() - totalSupplyBeforeMint <= _spendParams.revealedAmount, "Minted more than revealed!");
     }
 }
