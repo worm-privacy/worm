@@ -62,16 +62,17 @@ contract Staking is IRewardPool, ReentrancyGuard {
         return ret;
     }
 
-    constructor(IERC20 _stakingToken, IERC20 _rewardToken, uint256 _epochDuration) {
+    constructor(IERC20 _stakingToken, IERC20 _rewardToken, uint256 _epochDuration, uint256 _startingTimestamp) {
         stakingToken = _stakingToken;
         rewardToken = _rewardToken;
-        startingTimestamp = block.timestamp;
+        startingTimestamp = _startingTimestamp != 0 ? _startingTimestamp : block.timestamp;
         epochDuration = _epochDuration;
     }
 
     /// @notice Returns the current epoch index based on time since deployment.
     /// @return The zero-based epoch number.
     function currentEpoch() public view returns (uint256) {
+        require(block.timestamp >= startingTimestamp, "Staking has not started yet!");
         return (block.timestamp - startingTimestamp) / epochDuration;
     }
 

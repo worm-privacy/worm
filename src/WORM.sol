@@ -32,12 +32,12 @@ contract WORM is ERC20, ERC20Permit {
      * @param _premineAddress The address to receive the initial premine.
      * @param _premineAmount The amount of WORM tokens to premine.
      */
-    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount)
+    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount, uint256 _startingTimestamp)
         ERC20("WORM", "WORM")
         ERC20Permit("WORM")
     {
         bethContract = _bethContract;
-        startingTimestamp = block.timestamp;
+        startingTimestamp = _startingTimestamp != 0 ? _startingTimestamp : block.timestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
         if (_premineAddress != address(0)) {
             _mint(_premineAddress, _premineAmount);
@@ -50,6 +50,7 @@ contract WORM is ERC20, ERC20Permit {
      * @return The current epoch number.
      */
     function currentEpoch() public view returns (uint256) {
+        require(block.timestamp >= startingTimestamp, "Mining has not started yet!");
         return (block.timestamp - startingTimestamp) / EPOCH_DURATION;
     }
 

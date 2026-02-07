@@ -63,6 +63,8 @@ contract BETHScript is Script {
     function run() public {
         vm.startBroadcast();
 
+        uint256 startingTimestamp = block.timestamp;
+
         address eip7503DotEth = 0x8DC77b145d7009752D6947B3CF6D983caFA1C0Bb;
         address keyvankDotEth = 0x372abB165e3283C4E71ce68eFBA2934FEA5bFF45;
 
@@ -100,10 +102,10 @@ contract BETHScript is Script {
         beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0);
 
         require(staticsPremine + dynamicsPremine == PREMINE, "Invalid premine!");
-        worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine);
+        worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine, startingTimestamp);
         require(worm.balanceOf(msg.sender) == PREMINE, "Invalid WORM amount minted for deployer!");
 
-        staking = new Staking(IERC20(worm), IERC20(beth), 7 days);
+        staking = new Staking(IERC20(worm), IERC20(beth), 7 days, startingTimestamp);
         beth.initRewardPool(IRewardPool(staking));
 
         StaticDistributor staticDist = new StaticDistributor(IERC20(worm), staticShares);
