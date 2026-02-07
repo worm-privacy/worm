@@ -40,13 +40,15 @@ contract DeployAnvilScript is Script {
     function run() public {
         vm.startBroadcast();
 
+        uint256 startingTimestamp = block.timestamp;
+
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
 
         uint256 premineAmount = 40000 ether;
         beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 1000 ether);
-        worm = new WORM(IERC20(beth), msg.sender, premineAmount);
-        staking = new Staking(IERC20(worm), IERC20(beth), 1 days);
+        worm = new WORM(IERC20(beth), msg.sender, premineAmount, startingTimestamp);
+        staking = new Staking(IERC20(worm), IERC20(beth), 1 days, startingTimestamp);
         beth.initRewardPool(IRewardPool(staking));
 
         dist = new DynamicDistributor(IERC20(worm), UINT256_MAX, 0xf7d5E3D3546ebf28bDfC55cfceb0E62462E16C05);

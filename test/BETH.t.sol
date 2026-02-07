@@ -44,7 +44,8 @@ contract FakePool is IUniswapV3Pool {
         bytes calldata data
     ) external returns (int256 amount0, int256 amount1) {
         beth.transferFrom(msg.sender, address(this), uint256(amountSpecified));
-        recipient.call{value: uint256(amountSpecified)}("");
+        (bool success,) = recipient.call{value: uint256(amountSpecified)}("");
+        require(success, "TF");
     }
 }
 
@@ -64,6 +65,42 @@ contract BETHTest is Test {
         beth.initRewardPool(rewardPool);
         fakePool = new FakePool(beth);
         vm.deal(address(fakePool), 100 ether);
+    }
+
+    function test_nonInitialized() public {
+        BETH beth2 = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0);
+        IUniswapV3Pool fakePool2 = new FakePool(beth2);
+        vm.deal(address(fakePool2), 100 ether);
+        bytes memory receiverHook = abi.encode(
+            address(fakePool2),
+            0.01 ether,
+            abi.encodeWithSelector(IUniswapV3Pool.swap.selector, charlie, false, 0.01 ether, 0, new bytes(0))
+        );
+        beth2.mintCoin(
+            BETH.MintParams({
+                pA: [uint256(0), uint256(0)],
+                pB: [[uint256(0), uint256(0)], [uint256(0), uint256(0)]],
+                pC: [uint256(0), uint256(0)],
+                blockNumber: block.number - 1,
+                nullifier: 123,
+                remainingCoin: 234,
+                broadcasterFee: 0.1 ether,
+                revealedAmount: 1 ether,
+                revealedAmountReceiver: alice,
+                proverFee: 0.2 ether,
+                prover: bob,
+                receiverPostMintHook: receiverHook,
+                broadcasterFeePostMintHook: new bytes(0),
+                proverFeePostMintHook: new bytes(0)
+            })
+        );
+        assertEq(beth2.balanceOf(alice), 1 ether - 0.1 ether - 0.2 ether - 0.01 ether);
+        assertEq(beth2.balanceOf(address(fakePool2)), 0.01 ether);
+        assertEq(address(fakePool2).balance, 99.99 ether);
+        assertEq(charlie.balance, 0.01 ether);
+        assertEq(beth2.totalSupply(), 1 ether);
+        assertEq(beth2.balanceOf(address(this)), 0.1 ether);
+        assertEq(beth2.balanceOf(bob), 0.2 ether);
     }
 
     function test_mint() public {
