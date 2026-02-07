@@ -44,7 +44,7 @@ contract BETHScript is Script {
         uint256 tgeAmount = amount * tgeBips / 10000;
         uint256 amountAfterTge = amount - tgeAmount;
         uint256 initialAmount = amountAfterTge * cliffPeriodInMonths / vestingInMonths;
-        uint256 amountPerSecond = (amountAfterTge - initialAmount) / ((vestingInMonths - cliffPeriodInMonths) * 4 weeks);
+        uint256 amountPerSecond = (amountAfterTge - initialAmount) / ((vestingInMonths - cliffPeriodInMonths) * 30 days);
         return Distributor.Share({
             id: id,
             owner: owner,
@@ -117,7 +117,7 @@ contract BETHScript is Script {
         );
 
         DynamicDistributor dynamicDist =
-            new DynamicDistributor(IERC20(worm), block.timestamp + (3 * 4 weeks), address(0xa11ce));
+            new DynamicDistributor(IERC20(worm), block.timestamp + (3 * 30 days), address(0xa11ce));
         worm.transfer(address(dynamicDist), dynamicsPremine);
         require(worm.balanceOf(address(dynamicDist)) == dynamicsPremine, "Invalid WORM balance for static distributor!");
         require(worm.balanceOf(msg.sender) == 0, "Invalid WORM balance after transfer to dynamic distributor!");
