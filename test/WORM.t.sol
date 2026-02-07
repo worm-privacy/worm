@@ -71,11 +71,8 @@ contract WORMTest is Test {
         vm.warp(ts + 600 * 10093127);
         assertEq(worm.currentEpoch(), 10093127);
         assertEq(worm.currentReward(), 0);
-        uint256 sumRewards = 0;
-        for (uint256 i = 0; i < 10093127; i++) {
-            sumRewards += worm.cachedReward(i);
-        }
-        assertEq(sumRewards, 15148322929356316021917252);
+
+        assertEq(worm.cachedRewardsAccumulatedSum(), 15148322929356316021917252);
     }
 
     function test_constructor() public {
