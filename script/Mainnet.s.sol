@@ -98,9 +98,7 @@ contract BETHScript is Script {
 
         require(877751 ether <= dynamicsPremine && dynamicsPremine <= 877752 ether, "Dynamics premine not in range!");
 
-        IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
-        IVerifier spendVeifier = new SpendVerifier();
-        beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0, eip7503DotEth);
+        beth = BETH(bethMainnet);
 
         require(staticsPremine + dynamicsPremine == PREMINE, "Invalid premine!");
         worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine, startingTimestamp, 0);

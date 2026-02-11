@@ -130,7 +130,7 @@ contract WORM is ERC20, ERC20Permit {
         return mintAmount;
     }
 
-    function epochsWithNonZeroRewards(uint256 _fromEpoch, uint256 _numEpochs, address _user, uint256 _maxFound)
+    function discoverRewards(uint256 _fromEpoch, uint256 _numEpochs, address _user, uint256 _maxFound)
         public
         view
         returns (uint256 nextEpochToSearch, uint256[] memory epochs)
