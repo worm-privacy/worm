@@ -29,11 +29,12 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         IVerifier _proofOfBurnVerifier,
         IVerifier _spendVerifier,
         address _premineAddress,
-        uint256 _premineAmount
+        uint256 _premineAmount,
+        address _initializer
     ) ERC20("Burned ETH", "BETH") ERC20Permit("Burned ETH") {
         proofOfBurnVerifier = _proofOfBurnVerifier;
         spendVerifier = _spendVerifier;
-        initializer = msg.sender;
+        initializer = _initializer;
         if (_premineAddress != address(0)) {
             _mint(_premineAddress, _premineAmount);
         }
@@ -50,6 +51,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         require(msg.sender == initializer, "Only the initializer can initialize!");
         require(address(rewardPool) == address(0), "Reward pool already set!");
         rewardPool = _rewardPool;
+        initializer = address(0);
     }
 
     /**
