@@ -46,7 +46,7 @@ contract DeployAnvilScript is Script {
         IVerifier spendVeifier = new SpendVerifier();
 
         uint256 premineAmount = 40000 ether;
-        beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 1000 ether);
+        beth = new BETH(proofOfBurnVerifier, spendVeifier, msg.sender, 1000 ether, msg.sender);
         worm = new WORM(IERC20(beth), msg.sender, premineAmount, startingTimestamp, startingTimestamp + 7 days);
         staking = new Staking(IERC20(worm), IERC20(beth), 1 days, startingTimestamp);
         beth.initRewardPool(IRewardPool(staking));

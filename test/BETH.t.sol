@@ -59,7 +59,7 @@ contract BETHTest is Test {
     IUniswapV3Pool fakePool;
 
     function setUp() public {
-        beth = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0);
+        beth = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0, msg.sender);
         worm = new WORM(beth, alice, 10 ether, 0, 0);
         rewardPool = new Staking(worm, beth, 7 days, 0);
         beth.initRewardPool(rewardPool);
@@ -68,7 +68,7 @@ contract BETHTest is Test {
     }
 
     function test_nonInitialized() public {
-        BETH beth2 = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0);
+        BETH beth2 = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0, msg.sender);
         IUniswapV3Pool fakePool2 = new FakePool(beth2);
         vm.deal(address(fakePool2), 100 ether);
         bytes memory receiverHook = abi.encode(

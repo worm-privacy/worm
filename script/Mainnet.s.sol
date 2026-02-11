@@ -65,6 +65,7 @@ contract BETHScript is Script {
 
         uint256 startingTimestamp = block.timestamp;
 
+        address bethMainnet = 0x5624344235607940d4d4EE76Bf8817d403EB9Cf8;
         address eip7503DotEth = 0x8DC77b145d7009752D6947B3CF6D983caFA1C0Bb;
         address keyvankDotEth = 0x372abB165e3283C4E71ce68eFBA2934FEA5bFF45;
 
@@ -99,7 +100,7 @@ contract BETHScript is Script {
 
         IVerifier proofOfBurnVerifier = new ProofOfBurnVerifier();
         IVerifier spendVeifier = new SpendVerifier();
-        beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0);
+        beth = new BETH(proofOfBurnVerifier, spendVeifier, eip7503DotEth, 0, eip7503DotEth);
 
         require(staticsPremine + dynamicsPremine == PREMINE, "Invalid premine!");
         worm = new WORM(IERC20(beth), msg.sender, staticsPremine + dynamicsPremine, startingTimestamp, 0);
