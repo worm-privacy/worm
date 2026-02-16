@@ -8,18 +8,18 @@ import {ISwapRouter} from "src/hooks/cypher-eth/ISwapRouter.sol";
 contract BETHToETH {
     IERC20 public immutable bethContract;
     IWNativeToken public immutable wethContract;
+    ISwapRouter public immutable swapRouterContract;
 
-    constructor(IERC20 _bethContract, IWNativeToken _wethContract) {
+    constructor(IERC20 _bethContract, IWNativeToken _wethContract, ISwapRouter _swapRouterContract) {
         require(address(_bethContract) != address(0), "Invalid BETH address");
         require(address(_wethContract) != address(0), "Invalid WETH address");
+        require(address(_swapRouterContract) != address(0), "Invalid WETH address");
         bethContract = _bethContract;
         wethContract = _wethContract;
+        swapRouterContract = _swapRouterContract;
     }
 
-    function swapBethWithEth(uint256 _swapAmount, address _recipient, ISwapRouter _swapRouter)
-        public
-        returns (uint256 amountOut)
-    {
+    function swapBethWithEth(uint256 _swapAmount, address _recipient) public returns (uint256 amountOut) {
         require(_swapAmount > 0, "Amount must be greater than 0");
         require(_recipient != address(0), "Invalid recipient");
 
@@ -27,9 +27,9 @@ contract BETHToETH {
             bethContract.transferFrom(msg.sender, address(this), _swapAmount), "error while transferFrom beth to this"
         );
 
-        bethContract.approve(address(_swapRouter), _swapAmount);
+        bethContract.approve(address(swapRouterContract), _swapAmount);
 
-        amountOut = _swapRouter.exactInputSingle(
+        amountOut = swapRouterContract.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(bethContract),
                 tokenOut: address(wethContract),
@@ -42,7 +42,7 @@ contract BETHToETH {
             })
         );
 
-        bethContract.approve(address(_swapRouter), 0); // extra safety
+        bethContract.approve(address(swapRouterContract), 0); // extra safety
         wethContract.withdraw(amountOut);
         (bool success,) = _recipient.call{value: amountOut}("");
         require(success, "ETH transfer failed");
