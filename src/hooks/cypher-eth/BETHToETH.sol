@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IWNativeToken  } from "src/interfaces/IWNativeToken.sol";
-import { ISwapRouter  } from "src/interfaces/ISwapRouter.sol";
+import { IWNativeToken  } from "src/hooks/cypher-eth/IWNativeToken.sol";
+import { ISwapRouter  } from "src/hooks/cypher-eth/ISwapRouter.sol";
 
 contract BETHToETH{
 

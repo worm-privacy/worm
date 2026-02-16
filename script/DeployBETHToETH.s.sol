@@ -2,9 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
-import "../src/BETHToETH.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IWNativeToken  } from "src/interfaces/IWNativeToken.sol";
+import "src/hooks/cypher-eth/BETHToETH.sol";
+import { IWNativeToken  } from "src/hooks/cypher-eth/IWNativeToken.sol";
 
 contract DeployBETHToETH is Script {
     // mainnet addresses
