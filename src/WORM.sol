@@ -124,7 +124,7 @@ contract WORM is ERC20, ERC20Permit {
     }
 
     function discoverRewards(uint256 _fromEpoch, uint256 _numEpochs, address _user, uint256 _maxFound)
-        public
+        external
         view
         returns (uint256 nextEpochToSearch, uint256[] memory epochs)
     {
@@ -174,7 +174,7 @@ contract WORM is ERC20, ERC20Permit {
      * @param count The number of epochs to include in the response.
      * @return An `Info` struct containing global and user-specific information.
      */
-    function info(address user, uint256 since, uint256 count) public view returns (Info memory) {
+    function info(address user, uint256 since, uint256 count) external view returns (Info memory) {
         if (since == 0 && count == 0) {
             uint256 epoch = currentEpoch();
             since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
@@ -213,7 +213,7 @@ contract WORM is ERC20, ERC20Permit {
      * @param _epochRanges Array of epoch ranges
      * @return The approximate amount of tokens that can be minted.
      */
-    function multiApproximate(EpochRange[] calldata _epochRanges) public view returns (uint256) {
+    function multiApproximate(EpochRange[] calldata _epochRanges) external view returns (uint256) {
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _epochRanges.length; i++) {
             if (i > 0) {
