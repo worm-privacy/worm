@@ -44,4 +44,6 @@ contract BETHToETH{
         (bool success, ) = _recipient.call{value: amountOut}("");
         require(success, "ETH transfer failed");
     }
+
+    fallback() external payable {}
 }
