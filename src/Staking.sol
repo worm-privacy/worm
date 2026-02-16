@@ -94,7 +94,7 @@ contract Staking is IRewardPool, ReentrancyGuard {
      * @param count The number of epochs to fetch.
      * @return An `Info` struct containing epoch stats.
      */
-    function info(address user, uint256 since, uint256 count) public view returns (EpochStats memory) {
+    function info(address user, uint256 since, uint256 count) external view returns (EpochStats memory) {
         if (since == 0 && count == 0) {
             uint256 epoch = currentEpoch();
             since = epoch >= DEFAULT_INFO_MARGIN ? (epoch - DEFAULT_INFO_MARGIN) : 0;
@@ -119,6 +119,12 @@ contract Staking is IRewardPool, ReentrancyGuard {
             rewards: rewards
         });
     }
+
+    /*
+     * ========================
+     * END OF VIEW FUNCTIONS!
+     * ========================
+     */
 
     /// @notice Deposits reward tokens to be distributed for the current epoch.
     /// @dev The caller must approve the contract before calling.

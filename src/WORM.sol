@@ -229,8 +229,8 @@ contract WORM is ERC20, ERC20Permit {
 
     /*
      * ========================
-     * END OF VIEW FUNCTION!
-     * =======================
+     * END OF VIEW FUNCTIONS!
+     * ========================
      */
 
     /**
