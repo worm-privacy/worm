@@ -193,7 +193,6 @@ contract WORM is ERC20, ERC20Permit {
             EPOCH_DURATION - (block.timestamp - startingTimestamp - currentEpoch() * EPOCH_DURATION);
         uint256[] memory userContribs = new uint256[](count);
         uint256[] memory totalContribs = new uint256[](count);
-        uint256[] memory countContribs = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
             userContribs[i] = epochUser[i + since][user];
             totalContribs[i] = epochTotal[i + since];
