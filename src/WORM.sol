@@ -19,7 +19,6 @@ contract WORM is ERC20, ERC20Permit {
 
     uint256 public cachedRewardEpoch = 0;
     mapping(uint256 => uint256) public cachedReward;
-    uint256 public cachedRewardsAccumulatedSum = 0;
 
     mapping(uint256 => uint256) public epochTotal;
     mapping(uint256 => mapping(address => uint256)) public epochUser;
@@ -38,7 +37,6 @@ contract WORM is ERC20, ERC20Permit {
         bethContract = _bethContract;
         startingTimestamp = _startingTimestamp != 0 ? _startingTimestamp : block.timestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
-        cachedRewardsAccumulatedSum = INITIAL_REWARD_PER_EPOCH;
         if (_premineAddress != address(0)) {
             _mint(_premineAddress, _premineAmount);
         }
@@ -251,7 +249,6 @@ contract WORM is ERC20, ERC20Permit {
             rewardSum += reward;
         }
         cachedRewardEpoch = currRewardEpoch;
-        cachedRewardsAccumulatedSum += rewardSum;
     }
 
     /**
