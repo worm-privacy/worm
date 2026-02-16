@@ -16,7 +16,6 @@ contract WORM is ERC20, ERC20Permit {
 
     IERC20 public immutable bethContract;
     uint256 public immutable startingTimestamp;
-    uint256 public immutable endingTimestamp;
 
     uint256 public cachedRewardEpoch = 0;
     mapping(uint256 => uint256) public cachedReward;
@@ -32,16 +31,12 @@ contract WORM is ERC20, ERC20Permit {
      * @param _premineAddress The address to receive the initial premine.
      * @param _premineAmount The amount of WORM tokens to premine.
      */
-    constructor(
-        IERC20 _bethContract,
-        address _premineAddress,
-        uint256 _premineAmount,
-        uint256 _startingTimestamp,
-        uint256 _endingTimestamp
-    ) ERC20("WORM", "WORM") ERC20Permit("WORM") {
+    constructor(IERC20 _bethContract, address _premineAddress, uint256 _premineAmount, uint256 _startingTimestamp)
+        ERC20("WORM", "WORM")
+        ERC20Permit("WORM")
+    {
         bethContract = _bethContract;
         startingTimestamp = _startingTimestamp != 0 ? _startingTimestamp : block.timestamp;
-        endingTimestamp = _endingTimestamp;
         cachedReward[0] = INITIAL_REWARD_PER_EPOCH;
         cachedRewardsAccumulatedSum = INITIAL_REWARD_PER_EPOCH;
         if (_premineAddress != address(0)) {
@@ -266,10 +261,6 @@ contract WORM is ERC20, ERC20Permit {
      * @param _numEpochs The number of epochs to participate in.
      */
     function participate(uint256 _amountPerEpoch, uint256 _numEpochs) external {
-        if (endingTimestamp != 0) {
-            require(block.timestamp < endingTimestamp, "Network has ended!");
-        }
-
         require(_numEpochs != 0, "Invalid epoch number.");
         uint256 currEpoch = currentEpoch();
         for (uint256 i = 0; i < _numEpochs; i++) {
@@ -287,10 +278,6 @@ contract WORM is ERC20, ERC20Permit {
      * @param _numEpochs The number of epochs to claim rewards for.
      */
     function claim(uint256 _startingEpoch, uint256 _numEpochs) public {
-        if (endingTimestamp != 0) {
-            require(block.timestamp < endingTimestamp, "Network has ended!");
-        }
-
         cacheRewards(_startingEpoch + _numEpochs);
         uint256 mintAmount = calculateMintAmount(_startingEpoch, _numEpochs, msg.sender);
         for (uint256 i = 0; i < _numEpochs; i++) {

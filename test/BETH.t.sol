@@ -60,7 +60,7 @@ contract BETHTest is Test {
 
     function setUp() public {
         beth = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0, address(this));
-        worm = new WORM(beth, alice, 10 ether, 0, 0);
+        worm = new WORM(beth, alice, 10 ether, 0);
         rewardPool = new Staking(worm, beth, 7 days, 0);
         beth.initRewardPool(rewardPool);
         fakePool = new FakePool(beth);
