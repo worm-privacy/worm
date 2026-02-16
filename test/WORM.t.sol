@@ -26,6 +26,35 @@ contract WORMTest is Test {
         beth.mint(charlie, initialBalance);
     }
 
+    function test_reward_caching() public {
+        worm = new WORM(IERC20(address(0)), address(this), 0, 0);
+        assertEq(worm.rewardOf(0), 50 ether);
+        assertEq(worm.rewardOf(1), 49.999834965229375 ether);
+        assertEq(worm.rewardOf(2), 49.99966993100347951 ether);
+        assertEq(worm.rewardOf(10), 49.998349676806362202 ether);
+        assertEq(worm.rewardOf(11), 49.998184647482951396 ether);
+        assertEq(worm.cachedRewardEpoch(), 0);
+        assertEq(worm.cachedReward(0), 50 ether);
+        assertEq(worm.cachedReward(1), 0);
+        worm.cacheRewards(10);
+        assertEq(worm.rewardOf(0), 50 ether);
+        assertEq(worm.rewardOf(1), 49.999834965229375 ether);
+        assertEq(worm.rewardOf(2), 49.99966993100347951 ether);
+        assertEq(worm.rewardOf(10), 49.998349676806362202 ether);
+        assertEq(worm.cachedRewardEpoch(), 10);
+        assertEq(worm.cachedReward(10), 49.998349676806362202 ether);
+        assertEq(worm.cachedReward(11), 0 ether);
+        assertEq(worm.rewardOf(11), 49.998184647482951396 ether);
+
+        worm.cacheRewards(10);
+        assertEq(worm.cachedRewardEpoch(), 10);
+        assertEq(worm.cachedReward(10), 49.998349676806362202 ether);
+
+        worm.cacheRewards(11);
+        assertEq(worm.cachedRewardEpoch(), 11);
+        assertEq(worm.cachedReward(11), 49.998184647482951396 ether);
+    }
+
     function test_reward() public {
         worm = new WORM(IERC20(address(0)), address(this), 0, 0);
         worm.cacheRewards(10093127);
