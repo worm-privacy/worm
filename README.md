@@ -14,5 +14,5 @@ Deployment addresses of WORM stack:
 | Contract | Address                                    |
 | -------- | ------------------------------------------ |
 | BETH     | 0x5624344235607940d4d4EE76Bf8817d403EB9Cf8 |
-| WORM     | TBA                                        |
-| Staking  | TBA                                        |
+| WORM     | 0xfC9d98CdB3529F32cD7fb02d175547641e145B29 |
+| Staking  | 0x03d4702b51a98661B89dF5fcBe8C4baeF84C60B7 |
