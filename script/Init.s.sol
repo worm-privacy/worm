@@ -19,46 +19,7 @@ contract BETHScript is Script {
     WORM public worm;
     Staking public staking;
 
-    uint256 constant PREMINE = 5851677.070643683978082748 ether;
-
     function setUp() public {}
-
-    function newNonVested(uint256 id, address owner, uint256 amount) internal pure returns (Distributor.Share memory) {
-        return Distributor.Share({
-            id: id, owner: owner, tge: amount, startTime: 0, initialAmount: 0, amountPerSecond: 0, totalCap: amount
-        });
-    }
-
-    function newVested(
-        uint256 id,
-        address owner,
-        uint256 tgeBips,
-        uint256 amount,
-        uint256 blockTimestamp,
-        uint256 cliffPeriodInMonths,
-        uint256 vestingInMonths
-    ) internal pure returns (Distributor.Share memory) {
-        require(tgeBips <= 10000, "TGE should be in basis points");
-        require(cliffPeriodInMonths <= vestingInMonths, "Cliff period incorrect");
-        uint256 startTime = blockTimestamp + (cliffPeriodInMonths * 4 weeks);
-        uint256 tgeAmount = amount * tgeBips / 10000;
-        uint256 amountAfterTge = amount - tgeAmount;
-        uint256 initialAmount = amountAfterTge * cliffPeriodInMonths / vestingInMonths;
-        uint256 amountPerSecond = (amountAfterTge - initialAmount) / ((vestingInMonths - cliffPeriodInMonths) * 30 days);
-        return Distributor.Share({
-            id: id,
-            owner: owner,
-            tge: tgeAmount,
-            startTime: startTime,
-            initialAmount: initialAmount,
-            amountPerSecond: amountPerSecond,
-            totalCap: amount
-        });
-    }
-
-    function ofPremine(uint256 bipsA, uint256 bipsB) internal pure returns (uint256) {
-        return PREMINE * bipsA * bipsB / 100_000_000;
-    }
 
     function run() public {
         vm.startBroadcast();

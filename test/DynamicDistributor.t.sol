@@ -52,6 +52,7 @@ contract DynamicDistributorTest is Test {
         Distributor.Share memory share = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 100 ether,
             startTime: START,
             initialAmount: 0,
@@ -63,7 +64,7 @@ contract DynamicDistributorTest is Test {
 
         vm.prank(alice);
         distributor.reveal(share, sig);
-        (, address owner,,,,,) = distributor.shares(1);
+        (, address owner,,,,,,) = distributor.shares(1);
         assertEq(owner, alice);
     }
 
@@ -71,6 +72,7 @@ contract DynamicDistributorTest is Test {
         Distributor.Share memory share = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 0,
             startTime: START,
             initialAmount: 0,
@@ -92,6 +94,7 @@ contract DynamicDistributorTest is Test {
         Distributor.Share memory share = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 0,
             startTime: START,
             initialAmount: 0,
@@ -109,6 +112,7 @@ contract DynamicDistributorTest is Test {
         Distributor.Share memory share = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 50 ether,
             startTime: START,
             initialAmount: 50 ether,
@@ -133,6 +137,7 @@ contract DynamicDistributorTest is Test {
         Distributor.Share memory share = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 0,
             startTime: START,
             initialAmount: 0,

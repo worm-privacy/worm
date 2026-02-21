@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {StaticDistributor} from "../src/distributors/StaticDistributor.sol";
-import {Distributor} from "../src/distributors/Distributor.sol";
+import {Distributor, newVested} from "../src/distributors/Distributor.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -35,6 +35,7 @@ contract StaticDistributorTest is Test {
 
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
+    address charlie = address(0xc4a);
 
     uint256 constant START = 1_000;
     uint256 constant DEADLINE = 10_000;
@@ -42,20 +43,59 @@ contract StaticDistributorTest is Test {
     function setUp() public {
         token = new ERC20Mock();
 
-        Distributor.Share[] memory shares = new Distributor.Share[](1);
+        Distributor.Share[] memory shares = new Distributor.Share[](2);
         shares[0] = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 100 ether,
             startTime: START,
             initialAmount: 200 ether,
             amountPerSecond: 1 ether,
             totalCap: 1_000 ether
         });
+        shares[1] = newVested(2, charlie, 120, 500 ether, START, 6, 36);
 
         distributor = new StaticDistributor(token, shares);
 
-        token.mint(address(distributor), 1_000 ether);
+        token.mint(address(distributor), 1_500 ether);
+    }
+
+    function test_newVested() public {
+        vm.warp(0);
+        assertEq(distributor.calculateClaimable(2), 6 ether);
+        vm.warp(START - 1);
+        assertEq(distributor.calculateClaimable(2), 6 ether);
+        vm.warp(START);
+        assertEq(distributor.calculateClaimable(2), 6 ether);
+        vm.warp(START + (30 days) * 6 - 1 days);
+        assertEq(distributor.calculateClaimable(2), 6 ether);
+        vm.warp(START + (30 days) * 6 - 1 seconds);
+        assertEq(distributor.calculateClaimable(2), 6 ether);
+        vm.warp(START + (30 days) * 6);
+        assertEq(distributor.calculateClaimable(2), 88.333333333333333333 ether);
+        vm.warp(START + (30 days) * 7);
+        assertEq(distributor.calculateClaimable(2), 102.055555555554229333 ether);
+
+        vm.prank(charlie);
+        distributor.trigger(2);
+        assertEq(token.balanceOf(charlie), 102.055555555554229333 ether);
+        vm.prank(charlie);
+        vm.expectRevert("Nothing to claim!");
+        distributor.trigger(2);
+
+        vm.warp(START + (30 days) * 35);
+        assertEq(distributor.calculateClaimable(2), 486.277777777739317333 ether);
+        vm.warp(START + (30 days) * 36 - 1 days);
+        assertEq(distributor.calculateClaimable(2), 499.542592592552850133 ether);
+        vm.warp(START + (30 days) * 36);
+        assertEq(distributor.calculateClaimable(2), 499.999999999960213333 ether);
+        vm.warp(START + (30 days) * 40);
+        assertEq(distributor.calculateClaimable(2), 500 ether);
+
+        vm.prank(charlie);
+        distributor.trigger(2);
+        assertEq(token.balanceOf(charlie), 500 ether);
     }
 
     function test_contractOwner() public {
@@ -64,6 +104,7 @@ contract StaticDistributorTest is Test {
         shares[0] = Distributor.Share({
             id: 1,
             owner: alice,
+            tgeStartTime: 0,
             tge: 64 ether,
             startTime: 0,
             initialAmount: 0 ether,
