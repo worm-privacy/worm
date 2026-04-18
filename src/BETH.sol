@@ -11,10 +11,10 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
     event HookFailure(bytes returnData);
 
     uint256 public constant MINT_CAP = 10 ether;
-    uint256 public constant POOL_SHARE_INV = 200; // 1 / 200 = 0.5%
 
     address public initializer; // The address which has the permission to initialize the rewardPool
     IRewardPool public rewardPool;
+    uint256 public poolShareInv;
 
     IVerifier public immutable proofOfBurnVerifier;
     IVerifier public immutable spendVerifier;
@@ -47,10 +47,12 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
      *      that the stored reward pool address is zero.
      * @param _rewardPool The reward pool contract that will receive minted rewards
      */
-    function initRewardPool(IRewardPool _rewardPool) external {
+    function initRewardPool(IRewardPool _rewardPool, uint256 _poolShareInv) external {
         require(msg.sender == initializer, "Only the initializer can initialize!");
         require(address(rewardPool) == address(0), "Reward pool already set!");
+        require(_poolShareInv > 1, "Pool share inverse should be more than 1!");
         rewardPool = _rewardPool;
+        poolShareInv = _poolShareInv;
         initializer = address(0);
     }
 
@@ -184,7 +186,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
             )
         ) >> 8;
 
-        uint256 poolFee = address(rewardPool) != address(0) ? (_mintParams.revealedAmount / POOL_SHARE_INV) : 0; // 0.5%
+        uint256 poolFee = address(rewardPool) != address(0) ? (_mintParams.revealedAmount / poolShareInv) : 0; // 0.5%
         uint256 revealedAmountAfterFee = _mintParams.revealedAmount - poolFee;
 
         // Information bound to the proof (shifted right by 8 to fit within field elements).
@@ -267,7 +269,7 @@ contract BETH is ERC20, ReentrancyGuard, ERC20Permit {
         // For double checking the amount added to total-supply after mints
         uint256 totalSupplyBeforeMint = totalSupply();
 
-        uint256 poolFee = address(rewardPool) != address(0) ? (_spendParams.revealedAmount / POOL_SHARE_INV) : 0; // 0.5%
+        uint256 poolFee = address(rewardPool) != address(0) ? (_spendParams.revealedAmount / poolShareInv) : 0; // 0.5%
         uint256 revealedAmountAfterFee = _spendParams.revealedAmount - poolFee;
 
         uint256 rootCoin = coinSource[_spendParams.coin];

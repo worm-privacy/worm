@@ -62,7 +62,7 @@ contract BETHTest is Test {
         beth = new BETH(new AlwaysVerify(), new AlwaysVerify(), address(0), 0, address(this));
         worm = new WORM(beth, alice, 10 ether, 0);
         rewardPool = new Staking(worm, beth, 7 days, 0);
-        beth.initRewardPool(rewardPool);
+        beth.initRewardPool(rewardPool, 200);
         fakePool = new FakePool(beth);
         vm.deal(address(fakePool), 100 ether);
     }
