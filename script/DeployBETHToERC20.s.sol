@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Script.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "src/hooks/BETHToERC20.sol";
+import {IWNativeToken} from "src/hooks/cypher-eth/IWNativeToken.sol";
+
+contract DeployBETHToERC20 is Script {
+    // mainnet addresses
+    address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant BETH = 0x5624344235607940d4d4EE76Bf8817d403EB9Cf8;
+    address constant cypherETHRouter = 0x20C5893f69F635f55b0367C519F3f95e59c0b0Ab;
+    address constant uniswapETHRouter = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
+
+    function run() external {
+        vm.startBroadcast();
+
+        BETHToERC20 bethToERC20 = new BETHToERC20(IERC20(BETH), IWNativeToken(WETH), ISwapRouter(cypherETHRouter),IV3SwapRouter(uniswapETHRouter));
+        console.log("BETHToERC20 deployed to:", address(bethToERC20));
+
+        vm.stopBroadcast();
+    }
+}
