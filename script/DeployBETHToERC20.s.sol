@@ -16,7 +16,9 @@ contract DeployBETHToERC20 is Script {
     function run() external {
         vm.startBroadcast();
 
-        BETHToERC20 bethToERC20 = new BETHToERC20(IERC20(BETH), IWNativeToken(WETH), ISwapRouter(cypherETHRouter),IV3SwapRouter(uniswapETHRouter));
+        BETHToERC20 bethToERC20 = new BETHToERC20(
+            IERC20(BETH), IWNativeToken(WETH), ISwapRouter(cypherETHRouter), IV3SwapRouter(uniswapETHRouter)
+        );
         console.log("BETHToERC20 deployed to:", address(bethToERC20));
 
         vm.stopBroadcast();
